@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PropVault — Owner Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/portal.css" />
+</head>
+<body>
+  <!-- Metaverse grid -->
+  <div class="mv-grid"></div>
+  <!-- Cursor comet trail -->
+  <canvas id="portalCometCanvas"></canvas>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <span class="sb-logo-icon">🏠</span>
+      <span class="sb-logo-text">PropVault</span>
+      <span class="sb-role-badge badge-owner">Owner</span>
+    </div>
+    <div class="sb-user">
+      <div class="sb-avatar" id="sbAvatar">O</div>
+      <span class="sb-username" id="sbUsername">Loading…</span>
+    </div>
+    <nav class="sb-nav">
+      <div class="nav-item active" data-page="dashboard"><span class="nav-icon">📊</span>Dashboard</div>
+      <div class="nav-item" data-page="properties"><span class="nav-icon">🏢</span>My Properties</div>
+      <div class="nav-item" data-page="inquiries"><span class="nav-icon">💬</span>Inquiries</div>
+      <div class="nav-item" data-page="leases"><span class="nav-icon">📄</span>Lease Overview</div>
+      <div class="nav-item" data-page="payments"><span class="nav-icon">💳</span>Payment History</div>
+      <div class="nav-item" data-page="commissions"><span class="nav-icon">🤝</span>Agent Commissions</div>
+      <div class="nav-item" data-page="profile"><span class="nav-icon">👤</span>My Profile</div>
+    </nav>
+    <div class="sb-footer"><button class="logout-btn" onclick="logout()">🚪 Logout</button></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn">☰</button>
+      <h1 class="page-title" id="pageTitle">Dashboard</h1>
+      <div class="topbar-actions" id="topbarActions"></div>
+    </header>
+
+    <!-- Dashboard -->
+    <div class="page" id="page-dashboard">
+      <div class="stats-grid" id="dashStats"></div>
+      <div id="dashStatusChart"></div>
+    </div>
+
+    <!-- My Properties -->
+    <div class="page hidden" id="page-properties">
+      <div class="toolbar">
+        <input class="search-input" id="propSearch" placeholder="Search properties…" oninput="filterMyProps()" />
+        <select class="filter-sel" id="propStatusFilter" onchange="filterMyProps()">
+          <option value="">All Status</option>
+          <option>Available</option><option>Rented</option><option>Sold</option><option>Pending</option>
+        </select>
+      </div>
+      <div class="glass-card table-wrap" id="propsTable"></div>
+    </div>
+
+    <!-- Inquiries -->
+    <div class="page hidden" id="page-inquiries">
+      <div class="glass-card table-wrap" id="inquiriesTable"></div>
+    </div>
+
+    <!-- Leases -->
+    <div class="page hidden" id="page-leases">
+      <div class="glass-card table-wrap" id="leasesTable"></div>
+    </div>
+
+    <!-- Payments -->
+    <div class="page hidden" id="page-payments">
+      <div class="glass-card table-wrap" id="paymentsTable"></div>
+    </div>
+
+    <!-- Agent Commissions -->
+    <div class="page hidden" id="page-commissions">
+      <div style="padding:14px 0 18px;font-size:13px;color:var(--muted);line-height:1.7;">
+        💡 <strong style="color:var(--accent2)">How it works:</strong>
+        Full tenant rent goes 100% to you (the owner). When a first-lease payment or a sale completes,
+        the system creates a pending commission entry (72-hour timer) that you owe the agent.
+        Click <strong>Pay</strong> to mark it as settled.
+      </div>
+      <div class="glass-card table-wrap" id="commissionsTable"></div>
+    </div>
+
+    <!-- My Profile -->
+    <div class="page hidden" id="page-profile">
+      <div class="profile-page" id="profileContent"></div>
+    </div>
+  </main>
+
+  <!-- Add/Edit Property Modal -->
+  <div class="modal-overlay hidden" id="modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">Add Property</h2>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <form class="modal-form" id="modalForm" onsubmit="submitProp(event)">
+        <div class="form-row">
+          <div class="form-group"><label>Title</label><input id="propTitle" required placeholder="e.g. Sunrise 2BHK" /></div>
+          <div class="form-group"><label>Type</label>
+            <select id="propType">
+              <option>Apartment</option><option>Villa</option><option>Studio</option><option>Penthouse</option><option>Bungalow</option><option>Cottage</option><option>Office</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>Location</label><input id="propLoc" required placeholder="e.g. Andheri West, Mumbai" /></div>
+        <div class="form-row">
+          <div class="form-group"><label>Price (₹)</label><input type="number" id="propPrice" required min="1" placeholder="8500000" /></div>
+          <div class="form-group"><label>Status</label>
+            <select id="propStatus"><option>Available</option><option>Pending</option><option>Rented</option><option>Sold</option></select>
+          </div>
+        </div>
+        <!-- Agent IDs + Run button row -->
+        <div style="display:flex;gap:10px;align-items:flex-end;">
+          <div class="form-group" style="flex:1;">
+            <label>Assign Agents (comma-separated Agent IDs, first = primary)</label>
+            <input type="text" id="propAgentId" required placeholder="e.g. 1,2,3 — Click ▶ Run to browse" />
+          </div>
+          <button type="button" class="run-btn" onclick="toggleAgentMap()" id="runBtn">
+            <span class="run-pulse"></span> ▶ Run
+          </button>
+        </div>
+
+        <!-- Agent mapping table (hidden by default) -->
+        <div class="agent-map-panel hidden" id="agentMapPanel">
+          <div class="panel-header">🔎 Agent Directory — Click a row to <strong>add</strong> to selection</div>
+          <div id="agentMapBody">
+            <div class="agent-map-loading">Scanning agents…</div>
+          </div>
+        </div>
+
+        <div class="form-group"><label>Amenities (comma separated IDs)</label><input id="propAmenities" placeholder="1,2,3" /></div>
+        <button type="submit" class="form-submit">💾 Save Property</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+  <!-- Floating space particles -->
+  <canvas id="spaceCanvas" style="position:fixed;inset:0;pointer-events:none;z-index:0;"></canvas>
+  <script src="js/portal-utils.js"></script>
+  <script src="js/owner.js"></script>
+</body>
+</html>

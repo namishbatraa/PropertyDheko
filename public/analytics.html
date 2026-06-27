@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Analytics — Property Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #04050f;
+      --accent: #7c3aed;
+      --accent2: #06b6d4;
+      --glow: #a78bfa;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: #e2e8f0;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ─── Star field ─── */
+    #stars-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ─── Header ─── */
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.2rem 3rem;
+      background: rgba(4,5,15,0.6);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(124,58,237,0.2);
+    }
+
+    .logo {
+      font-size: 1.4rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--glow), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 0.05em;
+    }
+
+    nav a {
+      color: #94a3b8;
+      text-decoration: none;
+      margin-left: 2rem;
+      font-size: 0.9rem;
+      transition: color 0.3s;
+    }
+    nav a:hover { color: var(--glow); }
+
+    /* ─── Hero text ─── */
+    .hero {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      pointer-events: none;
+      text-align: center;
+      gap: 1rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 4rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, #f8fafc 0%, var(--glow) 60%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.1;
+    }
+
+    .hero p {
+      font-size: 1.05rem;
+      color: #94a3b8;
+      max-width: 540px;
+      line-height: 1.7;
+    }
+
+    .hint {
+      position: fixed;
+      bottom: 2.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      font-size: 0.85rem;
+      color: #64748b;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%,100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    /* ─── Planet wrapper ─── */
+    #planet-wrap {
+      position: fixed;
+      z-index: 5;
+      cursor: pointer;
+      width: 200px;
+      height: 200px;
+      /* JS positions it */
+    }
+
+    /* ─── Planet svg/div ─── */
+    .planet {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%,
+        #a78bfa 0%,
+        #7c3aed 30%,
+        #4c1d95 60%,
+        #1e1b4b 100%);
+      box-shadow:
+        0 0 60px 20px rgba(124,58,237,0.5),
+        0 0 120px 40px rgba(124,58,237,0.2),
+        inset -30px -20px 60px rgba(76,29,149,0.8);
+      position: relative;
+      overflow: hidden;
+      animation: spinPlanet 12s linear infinite;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    #planet-wrap:hover .planet {
+      transform: scale(1.08);
+      box-shadow:
+        0 0 80px 30px rgba(167,139,250,0.7),
+        0 0 160px 60px rgba(124,58,237,0.3),
+        inset -30px -20px 60px rgba(76,29,149,0.8);
+    }
+
+    @keyframes spinPlanet {
+      from { filter: hue-rotate(0deg); }
+      to   { filter: hue-rotate(30deg); }
+    }
+
+    /* Surface stripes */
+    .planet::before {
+      content: '';
+      position: absolute;
+      inset: -10%;
+      background: repeating-linear-gradient(
+        10deg,
+        transparent 0%,
+        transparent 8%,
+        rgba(255,255,255,0.04) 8%,
+        rgba(255,255,255,0.04) 10%
+      );
+      animation: rotate 20s linear infinite;
+    }
+
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* Shine */
+    .planet::after {
+      content: '';
+      position: absolute;
+      top: 10%; left: 15%;
+      width: 35%; height: 30%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 80%);
+    }
+
+    /* analytics label */
+    .planet-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: rgba(255,255,255,0.92);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-shadow: 0 0 12px rgba(255,255,255,0.6), 0 2px 6px rgba(0,0,0,0.5);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* ─── Ring ─── */
+    .ring-wrap {
+      position: absolute;
+      inset: -30px;
+      pointer-events: none;
+    }
+
+    .ring {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      background: linear-gradient(var(--bg), var(--bg)) padding-box,
+                  linear-gradient(135deg, rgba(167,139,250,0.8), rgba(6,182,212,0.4)) border-box;
+      transform: rotateX(75deg);
+      animation: ringFloat 6s ease-in-out infinite;
+    }
+
+    @keyframes ringFloat {
+      0%,100% { transform: rotateX(75deg) scale(1); }
+      50%      { transform: rotateX(75deg) scale(1.04); }
+    }
+
+    /* Click ripple */
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(167,139,250,0.4);
+      transform: scale(0);
+      animation: rippleAnim 0.6s ease-out forwards;
+      pointer-events: none;
+    }
+
+    @keyframes rippleAnim {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    /* ─── Floating particles around planet ─── */
+    .orbit-particle {
+      position: absolute;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--glow);
+      box-shadow: 0 0 8px var(--glow);
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="stars-canvas"></canvas>
+
+<header>
+  <div class="logo">⬡ PropManager</div>
+  <nav>
+    <a href="/index.html">Home</a>
+    <a href="/analytics.html" style="color:var(--glow)">Analytics</a>
+    <a href="/sql-queries.html">SQL Queries</a>
+  </nav>
+</header>
+
+<div class="hero">
+  <h1>Property Intelligence<br/>At a Glance</h1>
+  <p>Explore real-time analytics powered by your property management database. Click the planet to dive into the SQL queries driving every insight.</p>
+</div>
+
+<!-- Planet -->
+<div id="planet-wrap" title="Click to view SQL Queries">
+  <div class="ring-wrap"><div class="ring"></div></div>
+  <div class="planet">
+    <div class="planet-label">Analytics</div>
+  </div>
+</div>
+
+<div class="hint">↑ Click the planet to explore SQL queries</div>
+
+<script>
+  /* ── Star field ── */
+  (function(){
+    const canvas = document.getElementById('stars-canvas');
+    const ctx = canvas.getContext('2d');
+    let stars = [];
+    function resize(){
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    function initStars(){
+      stars = [];
+      for(let i=0;i<220;i++){
+        stars.push({
+          x: Math.random()*canvas.width,
+          y: Math.random()*canvas.height,
+          r: Math.random()*1.6+0.2,
+          a: Math.random(),
+          da: (Math.random()-0.5)*0.005,
+          speed: Math.random()*0.05
+        });
+      }
+    }
+    function drawStars(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      stars.forEach(s=>{
+        s.a += s.da;
+        if(s.a>1||s.a<0) s.da*=-1;
+        s.y += s.speed;
+        if(s.y>canvas.height) s.y=0;
+        ctx.beginPath();
+        ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+        ctx.fillStyle=`rgba(255,255,255,${s.a})`;
+        ctx.fill();
+      });
+      requestAnimationFrame(drawStars);
+    }
+    window.addEventListener('resize',()=>{ resize(); initStars(); });
+    resize(); initStars(); drawStars();
+  })();
+
+  /* ── Random planet movement ── */
+  (function(){
+    const wrap = document.getElementById('planet-wrap');
+    const W = () => window.innerWidth;
+    const H = () => window.innerHeight;
+    const SIZE = 200;
+    const MARGIN = 80;
+
+    let posX = W()/2 - SIZE/2;
+    let posY = H()/2 - SIZE/2;
+    let velX = (Math.random()-0.5)*1.2;
+    let velY = (Math.random()-0.5)*1.2;
+    let targetX = posX, targetY = posY;
+    let nextTarget = 0;
+
+    function pickTarget(){
+      targetX = MARGIN + Math.random()*(W()-SIZE-MARGIN*2);
+      targetY = 80 + MARGIN + Math.random()*(H()-SIZE-MARGIN*2-80);
+      nextTarget = Date.now() + 3000 + Math.random()*4000;
+    }
+
+    pickTarget();
+
+    function lerp(a,b,t){ return a+(b-a)*t; }
+
+    function animate(){
+      if(Date.now()>nextTarget) pickTarget();
+
+      const dx = targetX - posX;
+      const dy = targetY - posY;
+      velX = lerp(velX, dx*0.003, 0.04);
+      velY = lerp(velY, dy*0.003, 0.04);
+
+      // Clamp speed
+      const speed = Math.sqrt(velX*velX+velY*velY);
+      const maxSpeed = 2.5;
+      if(speed>maxSpeed){ velX=velX/speed*maxSpeed; velY=velY/speed*maxSpeed; }
+
+      posX += velX;
+      posY += velY;
+
+      // Boundary bounce
+      if(posX<MARGIN){ posX=MARGIN; velX*=-0.8; targetX=W()-SIZE-MARGIN; }
+      if(posX>W()-SIZE-MARGIN){ posX=W()-SIZE-MARGIN; velX*=-0.8; targetX=MARGIN; }
+      if(posY<80+MARGIN){ posY=80+MARGIN; velY*=-0.8; targetY=H()-SIZE-MARGIN; }
+      if(posY>H()-SIZE-MARGIN){ posY=H()-SIZE-MARGIN; velY*=-0.8; targetY=80+MARGIN; }
+
+      wrap.style.left = posX+'px';
+      wrap.style.top  = posY+'px';
+      requestAnimationFrame(animate);
+    }
+
+    wrap.style.left = posX+'px';
+    wrap.style.top  = posY+'px';
+    animate();
+
+    /* ── Click to navigate ── */
+    wrap.addEventListener('click', function(e){
+      // Ripple
+      const r = document.createElement('div');
+      r.className = 'ripple';
+      const rect = wrap.getBoundingClientRect();
+      const size = rect.width;
+      r.style.cssText = `width:${size}px;height:${size}px;left:0;top:0;`;
+      wrap.appendChild(r);
+      setTimeout(()=>{ window.location.href='/sql-queries.html'; }, 500);
+    });
+  })();
+</script>
+</body>
+</html>

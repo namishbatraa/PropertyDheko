@@ -1,0 +1,615 @@
+============================================================
+  PropVault — Full Change Log
+  All changes made across the entire session
+  Date: 09 April 2026
+============================================================
+
+════════════════════════════════════════════════════════════
+  FEATURE 1 — AMENITIES UNIQUE PER PROPERTY (no duplicates)
+════════════════════════════════════════════════════════════
+
+RULE:
+  The same amenity must NOT be added twice to the SAME property.
+  (e.g. Property 1 cannot have "Gym" listed twice)
+  Different properties CAN both have "Gym" — that is perfectly fine.
+  Owner 1's Property A and Owner 1's Property B can BOTH have "Gym".
+
+HOW IT WORKS:
+  The PROPERTY_AMENITY table already has a composite PRIMARY KEY
+  (Property_ID, Amenity_ID). This means the database itself
+  rejects any attempt to insert the same amenity into the same
+  property twice — no extra trigger is needed.
+
+  The global AMENITY.Amenity_Name unique constraint (uq_amenity_name)
+  is kept in place so the amenity catalogue (the AMENITY table itself)
+  doesn't accumulate duplicate names like two rows of "Gym".
+
+WHAT WAS INITIALLY WRONG (and fixed):
+  An incorrect trigger (trg_property_amenity_before_insert) was
+  created that blocked the same amenity from appearing on ANY of
+  the owner's properties — which was too restrictive.
+  That trigger was DROPPED. The correct enforcement is the
+  existing PK on PROPERTY_AMENITY (already present in schema).
+
+  Application routes use INSERT IGNORE INTO PROPERTY_AMENITY so
+  that if a duplicate ID is submitted (e.g. typing "1,1,1"),
+  the extras are silently skipped rather than causing an error.
+
+
+════════════════════════════════════════════════════════════
+  FEATURE 2 — AGENT COMMISSION ONLY ON FIRST LEASE
+════════════════════════════════════════════════════════════
+
+PROBLEM:
+  Agents were previously earning commission on every payment
+  made on any lease of a property they were assigned to.
+  The owner wanted: agent earns commission ONLY on the first
+  lease ever created for a property. All subsequent leases →
+  100% of rent goes to the owner.
+
+CHANGES MADE:
+
+  [1] db/multi-agent-migration.sql (NEW FILE)
+      - STEP 4: Added column PROPERTY.first_lease_id (INT NULL).
+        Stores the Lease_ID of the very first lease created for
+        that property. NULL means no lease has been created yet.
+        Back-fills existing properties using MIN(Lease_ID).
+
+      - TRIGGER trg_lease_after_insert_commission (NEW):
+        Fires AFTER INSERT on LEASE.
+        Sets PROPERTY.first_lease_id = NEW.Lease_ID only if
+        first_lease_id IS NULL (i.e., only runs once per property,
+        never overwrites).
+
+  [2] routes/agentPortal.js (MODIFIED)
+      - Dashboard commission query now filters:
+          AND l.Lease_ID = p.first_lease_id
+        so only payments on the first lease count toward commission.
+
+      - GET /payments now returns two extra columns per payment:
+          Is_Commission_Eligible  (1 or 0)
+          Commission_Amount       (calculated only if eligible)
+
+      - GET /leases now returns:
+          Is_Commission_Lease     (1 if this is the commission lease)
+        so the UI can highlight which lease earns commission.
+
+
+════════════════════════════════════════════════════════════
+  FEATURE 3 — OWNER CAN ASSIGN MULTIPLE AGENTS PER PROPERTY
+════════════════════════════════════════════════════════════
+
+PROBLEM:
+  PROPERTY table had a single Agent_ID column (one agent per
+  property). Owner requested multiple agents assignable to
+  the same property, with comma-separated entry in the UI.
+
+CHANGES MADE:
+
+  [1] db/multi-agent-migration.sql (NEW FILE — core change)
+
+      STEP 2: Created new PROPERTY_AGENT junction table:
+        CREATE TABLE PROPERTY_AGENT (
+            Property_ID  INT          NOT NULL,
+            Agent_ID     INT          NOT NULL,
+            Is_Primary   TINYINT(1)   NOT NULL DEFAULT 0,
+            Assigned_At  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (Property_ID, Agent_ID),
+            FK → PROPERTY (CASCADE),
+            FK → AGENT    (CASCADE)
+        );
+        The composite PRIMARY KEY itself acts as the uniqueness
+        constraint — no duplicate (Property, Agent) pairs possible.
+
+      STEP 3: Data migration — copied all existing PROPERTY.Agent_ID
+        values into PROPERTY_AGENT as Is_Primary = 1.
+        Made conditional so it only runs if the column still exists
+        (supports re-running the migration safely).
+
+      STEP 5: Dropped PROPERTY.Agent_ID FK constraint and column.
+        Both done conditionally via stored procedures.
+
+      STORED PROCEDURE sp_assign_agent(property_id, agent_id, is_primary):
+        - Starts a transaction
+        - SELECT ... FOR UPDATE on the PROPERTY row (row-level lock)
+        - Checks property is not Sold
+        - Checks agent isn't already assigned
+        - Demotes existing primary if making new agent primary
+        - Inserts into PROPERTY_AGENT
+        - Commits
+        Prevents race conditions when two callers try to assign
+        the same agent to the same property at the same time.
+
+      TRIGGER trg_inquiry_before_insert (REPLACED):
+        Old version validated INQUIRY.Agent_ID against
+        PROPERTY.Agent_ID (single column).
+        New version checks PROPERTY_AGENT for the property.
+        If the agent is not assigned, auto-corrects to the
+        primary agent (or any assigned agent as fallback).
+
+  [2] routes/properties.js (FULLY REWRITTEN)
+
+      GET /
+        Joins PROPERTY_AGENT + AGENT, returns:
+          Agent_Names  (e.g. "Ravi Sharma, Priya Nair")
+          Agent_IDs    (e.g. "1,2")
+
+      GET /:id
+        Same as above, also returns amenities list.
+
+      POST /
+        Accepts Agent_IDs as comma-separated string (e.g. "1,2,3").
+        First ID in list becomes Is_Primary = 1.
+        Inserts all into PROPERTY_AGENT in a transaction.
+
+      PUT /:id
+        If Agent_IDs is provided, replaces entire PROPERTY_AGENT
+        list for that property (delete + re-insert).
+
+      POST /:id/agents  (NEW ROUTE)
+        Adds a single agent using sp_assign_agent stored procedure.
+        Returns HTTP 409 on conflict (duplicate / sold property).
+
+      DELETE /:id/agents/:agentId  (NEW ROUTE)
+        Removes a specific agent from a property.
+
+      GET /:id/agents  (NEW ROUTE)
+        Lists all agents assigned to a property with Is_Primary flag.
+
+      Helper function parseAgentIds():
+        Accepts string "1,2,3" or array [1,2,3], returns clean
+        array of valid positive integers. Deduplicates automatically.
+
+  [3] routes/agentPortal.js (FULLY REWRITTEN)
+
+      All queries changed from:
+        WHERE p.Agent_ID = ?
+      to:
+        JOIN PROPERTY_AGENT pa ON p.Property_ID = pa.Property_ID
+        WHERE pa.Agent_ID = ?
+
+      POST /leases (LOCKING ADDED):
+        Does SELECT ... FOR UPDATE on the PROPERTY row BEFORE
+        inserting the lease. If two agents try to lease the same
+        property at the same time, the second transaction BLOCKS
+        until the first commits, then sees status Pending/Rented
+        and is rejected with HTTP 409.
+
+      POST /sales (LOCKING ADDED):
+        Same FOR UPDATE pattern. Concurrent sale attempt by
+        another agent will be serialized and rejected.
+
+  [4] routes/ownerPortal.js (FULLY REWRITTEN)
+
+      GET /properties:
+        Now returns Agent_Names, Agent_Phones, Agent_IDs
+        (all agents assigned, comma-separated) instead of
+        single Agent_Name / Agent_Phone.
+
+      POST /properties/:id/agents  (NEW ROUTE)
+        Owner can add an agent to their own property using
+        sp_assign_agent (verifies ownership first).
+
+      DELETE /properties/:id/agents/:agentId  (NEW ROUTE)
+        Owner can remove an agent from their own property.
+
+  [5] routes/leases.js (MODIFIED)
+
+      POST / (lease creation):
+        Added explicit check for property Status = 'Pending'.
+        If another agent has already started a lease/sale
+        (property is Pending), the new request is rejected with:
+        "Another agent is already processing a lease or sale
+        for this property."
+        Both 'Rented' and 'Sold' rejections were already there.
+        The FOR UPDATE lock ensures these checks are consistent.
+
+  [6] public/js/app.js (MODIFIED — admin SPA)
+
+      Properties table:
+        Column header changed from "Agent" → "Agents"
+        Cell now shows all Agent_Names (comma-joined).
+
+      Property add/edit form:
+        Agent ID field changed from:
+          type="number", label="Agent ID"
+        to:
+          type="text", label="Agent IDs (comma-separated, first = primary)"
+          placeholder="e.g. 1,2,3"
+        Form sends "Agent_IDs" key instead of "Agent_ID".
+        openModal() now populates Agent_IDs from API response.
+        Supports placeholder attribute on all form fields.
+
+  [7] public/owner.html (MODIFIED — owner portal)
+
+      Agent input field:
+        Changed from type="number" (single agent) to
+        type="text" with placeholder "e.g. 1,2,3 — Click ▶ Run to browse"
+        Label changed to:
+          "Assign Agents (comma-separated Agent IDs, first = primary)"
+
+      Agent directory panel header:
+        Changed to "🔎 Agent Directory — Click a row to ADD to selection"
+        (emphasizes multi-select behavior)
+
+  [8] public/js/owner.js (MODIFIED — owner portal)
+
+      renderMyPropsTable():
+        Column header "Agent" → "Agents"
+        Cell shows Agent_Names (with tooltip showing Agent_IDs)
+        instead of single Agent_Name.
+
+      selectAgent(agentId):
+        Old behavior: replaced the input with the single clicked ID.
+        New behavior: APPENDS the clicked ID to the comma list.
+          e.g. clicking agent 2, then agent 3 produces "2,3"
+        Shows toast: "Agent #2 added (total: 2)"
+        If ID already in list: shows warning toast instead.
+        Panel stays open so user can keep clicking to add more.
+
+      editProp(id):
+        Populates propAgentId field with p.Agent_IDs (comma CSV)
+        instead of p.Agent_ID (single value).
+        Resets agent map panel on open.
+
+      submitProp(e):
+        Sends key "Agent_IDs" instead of "Agent_ID" to the API.
+
+
+════════════════════════════════════════════════════════════
+  FEATURE 4 — MULTI-AGENT LEASE/SALE RACE CONDITION LOCKING
+════════════════════════════════════════════════════════════
+
+PROBLEM:
+  When multiple agents are assigned to the same property,
+  two agents could simultaneously try to create a lease or
+  sale. Without locking, both could read Status = 'Available'
+  and both succeed — leaving the property double-leased.
+
+SOLUTION (layered defense):
+
+  Layer 1 — Application-level FOR UPDATE lock:
+    Both POST /leases and POST /sales in agentPortal.js execute:
+      SELECT p.Property_ID, p.Status
+      FROM PROPERTY p
+      JOIN PROPERTY_AGENT pa ON ...
+      WHERE p.Property_ID = ? AND pa.Agent_ID = ?
+      FOR UPDATE;
+    This acquires an exclusive row lock on the PROPERTY row.
+    The second concurrent transaction blocks at this SELECT
+    until the first one commits. After it unblocks, the live
+    status is re-read — it will be Pending or Rented → rejected.
+
+  Layer 2 — Property status check under lock:
+    After acquiring the lock, status is validated:
+      Available  → proceed
+      Pending    → reject (another agent is in progress)
+      Rented     → reject
+      Sold       → reject
+
+  Layer 3 — DB trigger (belt-and-suspenders):
+    trg_lease_before_insert (existing trigger from integrity-migration)
+    still runs inside the same transaction and performs its own
+    overlap check — catching any edge cases the app layer misses.
+
+  Layer 4 — sp_assign_agent stored procedure:
+    When assigning agents to properties, the procedure also uses
+    FOR UPDATE on the property row to prevent concurrent
+    duplicate assignments.
+
+
+════════════════════════════════════════════════════════════
+  TRANSACTION TEST — NEW SCENARIO C ADDED
+════════════════════════════════════════════════════════════
+
+  [1] db/transaction-tests.sql (MODIFIED)
+
+      Added SCENARIO C: Multi-Agent Race Condition Test.
+
+      Setup:
+        - Property 9003 assigned to TWO agents (8002 and 8003)
+        - Agents: "Agent Alpha" (primary) and "Agent Beta"
+
+      Test Steps (run in two MySQL terminal sessions):
+        C1 [Terminal A]: START TRANSACTION;
+                         SELECT ... FOR UPDATE on Property 9003
+                         (Agent Alpha acquires the lock)
+
+        C2 [Terminal B]: START TRANSACTION;
+                         SELECT ... FOR UPDATE on Property 9003
+                         (Agent Beta BLOCKS — cannot proceed)
+
+        C3 [Terminal A]: INSERT lease + UPDATE property Rented + COMMIT
+                         (Agent Alpha wins, property is now Rented)
+                         Terminal B unblocks now.
+
+        C4 [Terminal B]: Reads Status = 'Rented' after unblocking
+                         → ROLLBACK (Agent Beta's attempt rejected)
+
+      Verification:
+        Property 9003 Status = 'Rented' ✓
+        Exactly 1 lease exists for Property 9003 ✓
+        Agent Beta's lease was never created ✓
+
+      Cleanup block included to remove all test data.
+
+
+════════════════════════════════════════════════════════════
+  BUG FIXES MADE DURING IMPLEMENTATION
+════════════════════════════════════════════════════════════
+
+  [1] Wrong amenity trigger dropped:
+      trg_property_amenity_before_insert was incorrectly blocking
+      the same amenity from appearing on ANY of the owner's properties.
+      Correct rule: duplicates within the SAME property are prevented
+      by the PK on PROPERTY_AMENITY — no trigger needed at all.
+      Trigger dropped live: DROP TRIGGER trg_property_amenity_before_insert
+
+  [2] Syntax error in agentPortal.js (line 41):
+      A SQL comment "-- ← only first lease" was accidentally
+      placed after a JavaScript template literal close.
+      Fixed by replacing with a JS comment: // commission: only first lease
+
+  [3] MySQL migration compatibility — 4 syntax errors fixed:
+      MySQL does NOT support the following inside ALTER TABLE:
+        - DROP INDEX IF EXISTS
+        - DROP FOREIGN KEY IF EXISTS
+        - DROP COLUMN IF EXISTS
+        - ADD COLUMN IF NOT EXISTS
+      Each was replaced with a conditional stored procedure pattern:
+        CREATE PROCEDURE _helper() BEGIN IF EXISTS (...) THEN ALTER ...; END IF; END
+        CALL _helper();
+        DROP PROCEDURE _helper;
+
+  [4] MySQL trigger syntax error (line 262):
+      SELECT Agent_ID INTO NEW.Agent_ID ... is not valid MySQL.
+      Must SELECT INTO a local variable, then assign:
+        DECLARE v_corrected_agent INT;
+        SELECT Agent_ID INTO v_corrected_agent FROM ...;
+        SET NEW.Agent_ID = v_corrected_agent;
+
+  [5] Migration re-run safety (STEP 3):
+      The INSERT IGNORE INTO PROPERTY_AGENT ... SELECT ... FROM PROPERTY
+      WHERE Agent_ID IS NOT NULL failed on re-run because PROPERTY.Agent_ID
+      had already been dropped in a previous partial run.
+      Fixed by wrapping in a conditional procedure that checks
+      information_schema.COLUMNS before running the INSERT.
+
+  [6] Port 3000 EADDRINUSE:
+      A previous node server instance was still occupying port 3000.
+      Fixed with: lsof -ti :3000 | xargs kill -9
+
+
+════════════════════════════════════════════════════════════
+  COMPLETE LIST OF FILES CHANGED / CREATED
+════════════════════════════════════════════════════════════
+
+  NEW FILES:
+    db/multi-agent-migration.sql      ← Run this in MySQL once
+    CHANGES.txt                       ← This file
+
+  MODIFIED FILES:
+    routes/properties.js              ← Multi-agent CRUD
+    routes/agentPortal.js             ← Commission + locking
+    routes/ownerPortal.js             ← Agent_Names, assign/remove
+    routes/leases.js                  ← Pending status check
+    public/js/app.js                  ← Admin SPA: Agent_IDs field
+    public/owner.html                 ← Owner portal: text input
+    public/js/owner.js                ← Owner portal: multi-select
+    db/transaction-tests.sql          ← Scenario C added
+
+
+════════════════════════════════════════════════════════════
+  HOW TO RUN THE MIGRATION (one-time setup)
+════════════════════════════════════════════════════════════
+
+  Run in terminal:
+    mysql -u root -pshashank property_mgmt < db/multi-agent-migration.sql
+
+  Expected output confirms:
+    - "Migration complete."
+    - PROPERTY_AGENT table columns listed
+    - All triggers listed (6 total after removing amenity trigger)
+    - sp_assign_agent procedure listed
+
+  The migration is idempotent — safe to re-run.
+
+
+════════════════════════════════════════════════════════════
+  FEATURE 5 — AGENT LEASE COMMISSION DAYS (0-60 range)
+════════════════════════════════════════════════════════════
+
+NEW FEATURE:
+  When registering or editing profile, an AGENT can specify how
+  many days of monthly rent they want as commission (0–60 days).
+  This replaces the previous percentage-based lease commission.
+
+  FORMULA:
+    Lease Commission = (Lease_Commission_Days / 60) × Monthly_Rent
+    Example: 30 days, rent ₹30,000 → Commission = ₹15,000 (one-time)
+
+  This commission is earned ONLY ONCE — on the property's first lease.
+  Subsequent leases → 0 commission to agent (100% to owner).
+
+  Sale commission remains unchanged: Commission_Rate% of sale amount.
+
+CHANGES MADE:
+
+  [1] Database — AGENT table
+      New column: Lease_Commission_Days TINYINT UNSIGNED DEFAULT 15
+      CHECK constraint: 0 ≤ value ≤ 60
+      All existing agents default to 15 days.
+
+  [2] routes/auth.js
+      Registration now accepts lease_commission_days in body.
+      Stored via INSERT INTO AGENT (..., Lease_Commission_Days).
+      Clamped to [0, 60] server-side.
+
+  [3] routes/profile.js
+      GET /api/profile — returns lease_commission_days for agents.
+      PUT /api/profile — updates Lease_Commission_Days alongside
+        Commission_Rate. Clamped to [0, 60] server-side.
+
+  [4] routes/agentPortal.js
+      Dashboard commission_earned:
+        Changed from payment-based % to lease-based days:
+        SUM(Lease_Commission_Days / 60 × Monthly_Rent) per first lease
+
+      GET /leases — adds:
+        Is_Commission_Lease       (1 = this is the first-lease)
+        Lease_Commission_Amount   (calculated once-off amount)
+        Lease_Commission_Days     (agent's current setting)
+        JOIN AGENT a added to query
+
+      GET /payments — Commission_Amount now uses days-formula:
+        CASE WHEN first_lease THEN (days/60 × rent) ELSE 0 END
+        Returns Lease_Commission_Days for display in UI.
+
+  [5] public/index.html (registration form)
+      commissionGroup div replaced with agentFields div containing:
+        - Commission Rate (%) — number input (for sales)
+        - Lease Commission Days — range slider 0-60 with live counter
+      Both fields hidden unless role = 'agent'.
+
+  [6] public/js/landing.js
+      selectRole() now shows/hides 'agentFields' (was commissionGroup).
+      Register body now sends lease_commission_days from slider.
+
+  [7] public/js/portal-utils.js (profile form)
+      Agent-only fields expanded to two-column row:
+        Left: Sale Commission Rate (%) — number input
+        Right: Lease Commission Days — range slider 0-60 with live label
+      saveProfile() now reads pLeaseDays slider and sends
+        lease_commission_days in PUT body.
+
+  [8] public/js/agent.js
+      loadLeases() — new Commission column:
+        Shows 💰 ₹amount badge with days count for first-lease.
+        Shows '—' for all subsequent leases.
+      loadPayments() — new Lease Commission column:
+        Shows commission amount + "X days × rent" label.
+        Shows '—' for non-commission payments.
+
+
+════════════════════════════════════════════════════════════
+  FEATURE 6 — FULL PAYMENT TO OWNER + AGENT COMMISSION DUE
+════════════════════════════════════════════════════════════
+
+NEW MODEL:
+  Before: Agent commission was conceptually deducted from payments.
+  Now:    Tenant pays → 100% of rent → Owner.
+          System creates a separate "AGENT_COMMISSION" record.
+          Owner has 72 hours to pay the agent that amount.
+          If not paid in 72 hours → Status flips: Pending → Overdue.
+
+  Lease commission  = (Lease_Commission_Days / 60) × Monthly_Rent (once)
+  Sale commission   = Commission_Rate% of Sale Amount (once per sale)
+
+CHANGES MADE:
+
+  [1] Database — new AGENT_COMMISSION table
+      Fields:
+        Commission_ID (PK)
+        Agent_ID       FK → AGENT
+        Property_ID    FK → PROPERTY
+        Lease_ID       FK → LEASE (null for sale commissions)
+        Sale_ID        FK → SALE  (null for lease commissions)
+        Commission_Type ENUM('Lease','Sale')
+        Amount          DECIMAL(12,2)
+        Status          ENUM('Pending','Paid','Overdue')
+        Due_By          TIMESTAMP  — 72 hours from creation
+        Paid_At         TIMESTAMP  — set when owner pays
+        Created_At      TIMESTAMP  DEFAULT CURRENT_TIMESTAMP
+
+  [2] routes/agentCommission.js (NEW FILE)
+      Timer job (every 5 min):
+        Sets Status = 'Overdue' WHERE Status='Pending' AND Due_By < NOW()
+        Runs immediately on server boot and every 5 minutes.
+
+      POST /lease/:leaseId — create lease commission (idempotent)
+      POST /sale/:saleId   — create sale commission (idempotent)
+
+      GET /owner   — owner sees all commissions owed by them
+      GET /agent   — agent sees all commissions owed to them
+
+      PUT /:id/pay — owner marks commission as Paid (FOR UPDATE lock)
+
+      GET /summary/agent — totals: paid, pending, overdue
+
+  [3] routes/payments.js (MODIFIED)
+      GET / and GET /:id — unchanged.
+      POST / — after INSERT and commit:
+        If Status = 'Success' and Lease is the first_lease:
+          Auto-creates an AGENT_COMMISSION record (Lease type).
+          Non-fatal — payment succeeds even if commission creation errors.
+        Full amount goes to owner, no deduction whatsoever.
+
+  [4] server.js (MODIFIED)
+      Added: const { router: commissionRouter } = require('./routes/agentCommission')
+      Registered: app.use('/api/agent-commission', verifyToken, commissionRouter)
+      Accessible by both owners (to pay) and agents (to view).
+
+  [5] routes/ownerPortal.js (MODIFIED)
+      Dashboard: adds pending_commissions count + total_agent_dues.
+      GET /commissions — owner views pending/overdue/paid commissions.
+      PUT /commissions/:id/pay — owner marks commission Paid.
+
+  [6] public/owner.html (MODIFIED)
+      New nav item: 🤝 Agent Commissions
+      New page div: page-commissions with commissionsTable container
+        Banner explaining the commission model.
+
+  [7] public/js/owner.js (MODIFIED)
+      PAGE_TITLES: added 'commissions' entry.
+      loadPage: added commissions page routing.
+      Dashboard: shows "Agent Dues Pending: N (₹amount)" stat card.
+      NEW: loadCommissions() function
+        - Renders table with timer countdowns (HH:MM:SS)
+        - Pending/Overdue turn red when expired
+        - 💸 Pay button per row
+        - Timers cleared on page reload
+      NEW: payCommission(id) function
+        - Calls PUT /owner-portal/commissions/:id/pay
+        - Reloads table on success
+
+  [8] public/agent.html (MODIFIED)
+      New nav: 💸 My Commissions
+      New page: page-commissions with commissionsAgentTable
+        Banner explaining the commission model for agents.
+
+  [9] public/js/agent.js (MODIFIED)
+      PAGE_TITLES: added 'commissions'.
+      loadPage: added commissions routing.
+      NEW: loadAgentCommissions()
+        - Gets data from GET /agent-commission/agent
+        - Shows: Property, Owner, Type, Amount, Status, Owner Deadline
+        - Status badges: ⏳ Pending, ⚠️ Overdue, ✅ Paid
+        - Countdown timer for pending/overdue
+        - Shows fmtDate(Paid_At) when paid
+
+
+════════════════════════════════════════════════════════════
+  COMPLETE FILES CHANGED/ADDED — FEATURES 5 & 6
+════════════════════════════════════════════════════════════
+
+  NEW FILES:
+    routes/agentCommission.js     ← Commission timer + CRUD routes
+
+  MODIFIED FILES:
+    routes/auth.js                ← Agent registration + lease_commission_days
+    routes/profile.js             ← Read/write lease_commission_days
+    routes/agentPortal.js         ← Days-based commission formula
+    routes/ownerPortal.js         ← Dashboard dues + commission pay endpoints
+    routes/payments.js            ← Auto-creates commission on first-lease payment
+    server.js                     ← Wire /api/agent-commission route
+    public/index.html             ← Slider 0-60 in registration form
+    public/owner.html             ← Commissions nav + page
+    public/agent.html             ← My Commissions nav + page
+    public/js/landing.js          ← agentFields show/hide + lease_commission_days
+    public/js/portal-utils.js     ← Profile: dual commission fields, slider 0-60
+    public/js/owner.js            ← loadCommissions, payCommission, dashboard dues
+    public/js/agent.js            ← loadAgentCommissions with countdown timers
+
+============================================================
+  END OF CHANGE LOG
+============================================================

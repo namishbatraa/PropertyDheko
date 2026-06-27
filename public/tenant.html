@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PropVault — Tenant Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/portal.css" />
+</head>
+<body>
+  <div class="mv-grid"></div>
+  <canvas id="portalCometCanvas"></canvas>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <span class="sb-logo-icon">🏠</span>
+      <span class="sb-logo-text">PropVault</span>
+      <span class="sb-role-badge badge-tenant">Tenant</span>
+    </div>
+    <div class="sb-user">
+      <div class="sb-avatar" id="sbAvatar">T</div>
+      <span class="sb-username" id="sbUsername">Loading…</span>
+    </div>
+    <nav class="sb-nav">
+      <div class="nav-item active" data-page="dashboard"><span class="nav-icon">📊</span>Dashboard</div>
+      <div class="nav-item" data-page="browse"><span class="nav-icon">🔍</span>Browse Properties</div>
+      <div class="nav-item" data-page="inquiries"><span class="nav-icon">💬</span>My Inquiries</div>
+      <div class="nav-item" data-page="lease"><span class="nav-icon">📄</span>My Lease</div>
+      <div class="nav-item" data-page="purchases"><span class="nav-icon">🏠</span>My Purchases</div>
+      <div class="nav-item" data-page="payments"><span class="nav-icon">💳</span>Payment History</div>
+      <div class="nav-item" data-page="profile"><span class="nav-icon">👤</span>My Profile</div>
+    </nav>
+    <div class="sb-footer"><button class="logout-btn" onclick="logout()">🚪 Logout</button></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn">☰</button>
+      <h1 class="page-title" id="pageTitle">Dashboard</h1>
+      <div class="topbar-actions" id="topbarActions"></div>
+    </header>
+
+    <!-- Dashboard -->
+    <div class="page" id="page-dashboard">
+      <div class="stats-grid" id="dashStats"></div>
+      <div class="detail-panel" id="welcomePanel">
+        <div class="detail-title">Welcome to PropVault 🔑</div>
+        <div class="detail-sub">Browse available properties, send inquiries, and track your lease and payments — all in one place.</div>
+        <div class="timeline" style="margin-top:18px;">
+          <div class="tl-step"><div class="tl-dot done">1</div><div class="tl-content"><h4>Browse Properties</h4><p>Search and filter from all available listings</p></div></div>
+          <div class="tl-line"></div>
+          <div class="tl-step"><div class="tl-dot active">2</div><div class="tl-content"><h4>Send Inquiry</h4><p>Express interest and contact the agent</p></div></div>
+          <div class="tl-line"></div>
+          <div class="tl-step"><div class="tl-dot waiting">3</div><div class="tl-content"><h4>Get Lease</h4><p>Agent creates the lease once deal is finalized</p></div></div>
+          <div class="tl-line"></div>
+          <div class="tl-step"><div class="tl-dot waiting">4</div><div class="tl-content"><h4>Pay Rent</h4><p>Track monthly payments in Payment History</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Browse Properties -->
+    <div class="page hidden" id="page-browse">
+      <div class="toolbar">
+        <input class="search-input" id="browseSearch" placeholder="Search by title or location…" oninput="filterProps()" />
+        <select class="filter-sel" id="browseType" onchange="filterProps()">
+          <option value="">All Types</option>
+          <option>Apartment</option><option>Villa</option><option>Studio</option>
+          <option>Penthouse</option><option>Bungalow</option><option>Cottage</option>
+        </select>
+        <select class="filter-sel" id="browseStatus" onchange="filterProps()">
+          <option value="">All Status</option>
+          <option>Available</option><option>Pending</option>
+        </select>
+        <select class="filter-sel" id="browsePrice" onchange="filterProps()">
+          <option value="">Any Price</option>
+          <option value="5000000">Under ₹50L</option>
+          <option value="10000000">Under ₹1Cr</option>
+          <option value="25000000">Under ₹2.5Cr</option>
+        </select>
+      </div>
+      <div class="prop-grid" id="propGrid"></div>
+    </div>
+
+    <!-- My Inquiries -->
+    <div class="page hidden" id="page-inquiries">
+      <div class="glass-card table-wrap" id="inquiriesTable"></div>
+    </div>
+
+    <!-- My Lease -->
+    <div class="page hidden" id="page-lease">
+      <div id="leaseContent"></div>
+    </div>
+
+    <!-- Payments -->
+    <div class="page hidden" id="page-payments">
+      <div class="glass-card table-wrap" id="paymentsTable"></div>
+    </div>
+
+    <!-- My Purchases (Property Sales) -->
+    <div class="page hidden" id="page-purchases">
+      <div id="purchasesContent"></div>
+    </div>
+    <!-- My Profile -->
+    <div class="page hidden" id="page-profile">
+      <div class="profile-page" id="profileContent"></div>
+    </div>
+  </main>
+
+  <canvas id="spaceCanvas" style="position:fixed;inset:0;z-index:0;pointer-events:none;"></canvas>
+
+  <!-- Inquiry Modal -->
+  <div class="modal-overlay hidden" id="modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">Send Inquiry</h2>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div style="padding:22px 26px;display:flex;flex-direction:column;gap:14px;" id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+  <script src="js/portal-utils.js"></script>
+  <script src="js/tenant.js"></script>
+</body>
+</html>

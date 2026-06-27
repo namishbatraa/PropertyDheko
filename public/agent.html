@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PropVault — Agent Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/portal.css" />
+</head>
+<body>
+  <!-- Metaverse grid -->
+  <div class="mv-grid"></div>
+  <!-- Cursor comet trail -->
+  <canvas id="portalCometCanvas"></canvas>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <span class="sb-logo-icon">🏠</span>
+      <span class="sb-logo-text">PropVault</span>
+      <span class="sb-role-badge badge-agent">Agent</span>
+    </div>
+    <div class="sb-user">
+      <div class="sb-avatar" id="sbAvatar">A</div>
+      <span class="sb-username" id="sbUsername">Loading…</span>
+    </div>
+    <nav class="sb-nav">
+      <div class="nav-item active" data-page="dashboard"><span class="nav-icon">📊</span>Dashboard</div>
+      <div class="nav-item" data-page="properties"><span class="nav-icon">🏢</span>My Properties</div>
+      <div class="nav-item" data-page="inquiries"><span class="nav-icon">💬</span>Inquiry Mgmt</div>
+      <div class="nav-item" data-page="leases"><span class="nav-icon">📄</span>Leases</div>
+      <div class="nav-item" data-page="sales"><span class="nav-icon">🏠</span>Sales</div>
+      <div class="nav-item" data-page="payments"><span class="nav-icon">💳</span>Payments</div>
+      <div class="nav-item" data-page="commissions"><span class="nav-icon">💸</span>My Commissions</div>
+      <div class="nav-item" data-page="profile"><span class="nav-icon">👤</span>My Profile</div>
+    </nav>
+    <div class="sb-footer"><button class="logout-btn" onclick="logout()">🚪 Logout</button></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn">☰</button>
+      <h1 class="page-title" id="pageTitle">Dashboard</h1>
+      <div class="topbar-actions" id="topbarActions"></div>
+    </header>
+
+    <!-- Dashboard -->
+    <div class="page" id="page-dashboard">
+      <div class="stats-grid" id="dashStats"></div>
+      <div class="detail-panel">
+        <div class="detail-title">Agent Workflow 🤝</div>
+        <div class="detail-sub">Your step-by-step guide to handling a property deal</div>
+        <div class="timeline" style="margin-top:18px;">
+          <div class="tl-step"><div class="tl-dot done">1</div><div class="tl-content"><h4>Property Assigned</h4><p>Owner lists a property and assigns it to you</p></div></div>
+          <div class="tl-line"></div>
+          <div class="tl-step"><div class="tl-dot active">2</div><div class="tl-content"><h4>Tenant Sends Inquiry</h4><p>New inquiry appears in your Inquiry Management</p></div></div>
+          <div class="tl-line"></div>
+          <div class="tl-step"><div class="tl-dot waiting">3</div><div class="tl-content"><h4>Respond to Inquiry</h4><p>Update status: New → Responded → Closed</p></div></div>
+          <div class="tl-line"></div>
+          <div class="tl-step"><div class="tl-dot waiting">4</div><div class="tl-content"><h4>Create Lease</h4><p>Finalize deal: create lease, property becomes Rented</p></div></div>
+          <div class="tl-line"></div>
+          <div class="tl-step"><div class="tl-dot waiting">5</div><div class="tl-content"><h4>Track Payments</h4><p>Monitor rent payments and commission earned</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- My Properties -->
+    <div class="page hidden" id="page-properties">
+      <div class="glass-card table-wrap" id="propsTable"></div>
+    </div>
+
+    <!-- Inquiries -->
+    <div class="page hidden" id="page-inquiries">
+      <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">New inquiries are highlighted. Respond to keep tenants engaged.</p>
+      <div class="glass-card table-wrap" id="inquiriesTable"></div>
+    </div>
+
+    <!-- Leases -->
+    <div class="page hidden" id="page-leases">
+      <div class="glass-card table-wrap" id="leasesTable"></div>
+    </div>
+
+    <!-- Payments -->
+    <div class="page hidden" id="page-payments">
+      <div class="glass-card table-wrap" id="paymentsTable"></div>
+    </div>
+
+    <!-- Sales -->
+    <div class="page hidden" id="page-sales">
+      <div class="glass-card table-wrap" id="salesTable"></div>
+    </div>
+
+    <!-- My Commissions (what owner owes me) -->
+    <div class="page hidden" id="page-commissions">
+      <div style="padding:14px 0 18px;font-size:13px;color:var(--muted);line-height:1.7;">
+        💡 <strong style="color:var(--accent2)">Commission Model:</strong>
+        Full tenant rent + sale proceeds go entirely to the owner.
+        The owner then pays you commission separately within 72 hours.
+        <strong>Lease commission</strong> = (your Lease Days / 60) × monthly rent &mdash; paid once on first lease.
+        <strong>Sale commission</strong> = your Commission Rate% of sale amount.
+      </div>
+      <div class="glass-card table-wrap" id="commissionsAgentTable"></div>
+    </div>
+
+    <!-- My Profile -->
+    <div class="page hidden" id="page-profile">
+      <div class="profile-page" id="profileContent"></div>
+    </div>
+  </main>
+
+  <!-- Space canvas -->
+  <canvas id="spaceCanvas" style="position:fixed;inset:0;z-index:0;pointer-events:none;"></canvas>
+
+  <!-- Create Lease Modal -->
+  <div class="modal-overlay hidden" id="leaseModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Create New Lease</h2>
+        <button class="modal-close" onclick="document.getElementById('leaseModal').classList.add('hidden')">✕</button>
+      </div>
+      <form class="modal-form" onsubmit="submitLease(event)">
+        <div class="form-row">
+          <div class="form-group"><label>Property ID</label><input type="number" id="lPropId" required /></div>
+          <div class="form-group"><label>Tenant ID</label><input type="number" id="lTenantId" required /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Start Date</label><input type="date" id="lStart" required /></div>
+          <div class="form-group"><label>End Date</label><input type="date" id="lEnd" required /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Monthly Rent (₹)</label><input type="number" id="lRent" required min="1" /></div>
+          <div class="form-group"><label>Security Deposit (₹)</label><input type="number" id="lDeposit" min="0" placeholder="0" /></div>
+        </div>
+        <button type="submit" class="form-submit">📄 Create Lease</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Create Sale Modal -->
+  <div class="modal-overlay hidden" id="saleModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>🏠 Create Property Sale</h2>
+        <button class="modal-close" onclick="document.getElementById('saleModal').classList.add('hidden')">✕</button>
+      </div>
+      <form class="modal-form" onsubmit="submitSale(event)">
+        <div class="form-row">
+          <div class="form-group"><label>Property ID</label><input type="number" id="sPropId" required /></div>
+          <div class="form-group"><label>Buyer Tenant ID</label><input type="number" id="sBuyerId" required /></div>
+        </div>
+        <div class="form-group"><label>Sale Amount (₹)</label><input type="number" id="sAmount" required min="1" placeholder="e.g. 12500000" /></div>
+        <div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:12px;font-size:12px;color:#fbbf24;">
+          ⚠️ The buyer has <strong>3 hours</strong> to complete payment. If not paid, the property returns to Available.
+        </div>
+        <button type="submit" class="form-submit">🏠 Create Sale</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+  <script src="js/portal-utils.js"></script>
+  <script src="js/agent.js"></script>
+</body>
+</html>

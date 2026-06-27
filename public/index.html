@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PropVault — Property Management System</title>
+  <meta name="description" content="PropVault: Role-based property management for Agents, Owners, and Tenants." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/landing.css" />
+  <style>
+    /* Metaverse grid overlay */
+    .metaverse-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(124,58,237,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,58,237,0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+      animation: grid-drift 40s linear infinite;
+    }
+    @keyframes grid-drift {
+      0%  { background-position: 0 0, 0 0; }
+      100%{ background-position: 0 240px, 240px 0; }
+    }
+    /* Cursor comet trail canvas */
+    #cometCanvas { position:fixed; inset:0; z-index:999; pointer-events:none; }
+    /* Warp speed overlay */
+    #warpCanvas  { position:fixed; inset:0; z-index:5; pointer-events:none; }
+    /* Parallax planet wrapper */
+    .parallax-layer { transition: transform 0.1s ease-out; will-change: transform; }
+    /* Aurora at very bottom of hero */
+    .aurora {
+      position:absolute; bottom:0; left:0; right:0; height:220px;
+      background: linear-gradient(to top,
+        rgba(34,211,238,0.08) 0%,
+        rgba(124,58,237,0.06) 40%,
+        transparent 100%);
+      filter: blur(30px);
+      pointer-events:none;
+      animation: aurora-wave 8s ease-in-out infinite alternate;
+    }
+    @keyframes aurora-wave {
+      0%  { opacity:0.5; transform:scaleX(1); }
+      100%{ opacity:1;   transform:scaleX(1.05) skewX(-2deg); }
+    }
+    /* Energy ring pulse around sun */
+    @keyframes ring-expand {
+      0%   { transform:translate(-50%,-50%) scale(0.8); opacity:0.6; }
+      100% { transform:translate(-50%,-50%) scale(2.2); opacity:0; }
+    }
+    .sun-ring {
+      position:absolute; top:50%; left:50%;
+      width:90px; height:90px;
+      border-radius:50%;
+      border:2px solid rgba(255,180,0,0.5);
+      animation: ring-expand 2.5s ease-out infinite;
+    }
+    .sun-ring:nth-child(2){ animation-delay:0.8s; }
+    .sun-ring:nth-child(3){ animation-delay:1.6s; }
+    /* Hover glow trail on CTA */
+    .cta-btn { overflow: hidden; }
+    /* Holographic shimmer on feat cards */
+    .feat-card { transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+    .feat-card:hover { box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,58,237,0.4), 0 0 40px rgba(124,58,237,0.12); }
+    /* Neon border shimmer on role cards */
+    @keyframes border-glow {
+      0%,100%{ box-shadow: 0 0 10px rgba(124,58,237,0.2), 0 30px 60px rgba(0,0,0,0.5); }
+      50%    { box-shadow: 0 0 30px rgba(34,211,238,0.3), 0 30px 60px rgba(0,0,0,0.5); }
+    }
+    .role-card:hover { animation: border-glow 2s ease-in-out infinite; }
+    /* Metaverse portal rings on role card hover */
+    .role-card::after {
+      content:'';
+      position:absolute; inset:-1px;
+      border-radius:27px;
+      background: conic-gradient(from var(--angle,0deg), transparent 20%, rgba(124,58,237,0.6) 40%, transparent 60%, rgba(34,211,238,0.4) 80%, transparent 100%);
+      opacity:0;
+      transition: opacity 0.3s;
+      z-index:0;
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      padding:1px;
+    }
+    .role-card:hover::after { opacity:1; animation: spin-border 3s linear infinite; }
+    @keyframes spin-border { to { --angle: 360deg; } }
+    /* Floating asteroid belt */
+    .asteroid { position:absolute; border-radius:50%; background:rgba(200,180,150,0.6); pointer-events:none; }
+    /* Milky way text glow */
+    .hero-title { text-shadow: 0 0 80px rgba(124,58,237,0.15); }
+    .gradient-text { filter: drop-shadow(0 0 30px rgba(34,211,238,0.3)); }
+    /* Scroll sections slide-in */
+    .feat-card, .role-card {
+      opacity:0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease, box-shadow 0.4s;
+    }
+    .feat-card.visible, .role-card.visible {
+      opacity:1;
+      transform: translateY(0);
+    }
+    /* Section headings */
+    .section-title { text-shadow: 0 0 40px rgba(124,58,237,0.2); }
+    /* Holographic badge */
+    .hero-badge {
+      background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(34,211,238,0.15));
+      border: 1px solid rgba(34,211,238,0.3);
+      backdrop-filter: blur(20px);
+      animation: badge-glow 3s ease-in-out infinite alternate;
+    }
+    @keyframes badge-glow {
+      0%  { box-shadow: 0 0 10px rgba(124,58,237,0.2); border-color: rgba(124,58,237,0.3); }
+      100%{ box-shadow: 0 0 25px rgba(34,211,238,0.3); border-color: rgba(34,211,238,0.4); }
+    }
+    /* Typewriter cursor blink on hero badge */
+    @keyframes blink { 0%,100%{ opacity:1; } 50%{ opacity:0; } }
+    /* Floating data particles */
+    .data-particle {
+      position:fixed; pointer-events:none; z-index:1;
+      font-family:'Orbitron',monospace; font-size:10px;
+      color:rgba(124,58,237,0.3);
+      animation: data-float linear infinite;
+    }
+    @keyframes data-float {
+      0%  { transform:translateY(0); opacity:0; }
+      10% { opacity:1; }
+      90% { opacity:0.5; }
+      100%{ transform:translateY(-100vh); opacity:0; }
+    }
+  /* ── Analytics mini-planet ── */
+  #analytics-planet {
+    position:fixed;
+    z-index:6;
+    width:72px; height:72px;
+    cursor:pointer;
+    pointer-events:all;
+    transition:transform 0.25s ease;
+  }
+  #analytics-planet:hover { transform:scale(1.15); }
+  .apl-body {
+    width:100%; height:100%;
+    border-radius:50%;
+    background:radial-gradient(circle at 34% 30%,#c4b5fd,#7c3aed 45%,#3b0764);
+    box-shadow:0 0 22px 6px rgba(124,58,237,0.55),
+               0 0 50px 10px rgba(124,58,237,0.18),
+               inset -12px -8px 24px rgba(49,14,101,0.8);
+    position:relative; overflow:hidden;
+    animation:apl-hue 10s linear infinite;
+  }
+  @keyframes apl-hue { to { filter:hue-rotate(25deg); } }
+  .apl-body::before {
+    content:'';
+    position:absolute; inset:-10%;
+    background:repeating-linear-gradient(12deg,transparent 0%,transparent 9%,rgba(255,255,255,0.05) 9%,rgba(255,255,255,0.05) 11%);
+    animation:apl-spin 18s linear infinite;
+  }
+  @keyframes apl-spin { to { transform:rotate(360deg); } }
+  .apl-body::after {
+    content:'';
+    position:absolute; top:8%;left:12%;
+    width:32%;height:26%;
+    border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,0.28) 0%,transparent 80%);
+  }
+  .apl-label {
+    position:absolute; inset:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:0.52rem; font-weight:700; letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:rgba(255,255,255,0.9);
+    text-shadow:0 0 8px rgba(255,255,255,0.5);
+    z-index:2; pointer-events:none;
+    font-family:'Orbitron',monospace;
+  }
+  .apl-ring {
+    position:absolute; inset:-10px;
+    border-radius:50%;
+    border:1.5px solid rgba(167,139,250,0.5);
+    transform:rotateX(72deg);
+    animation:apl-ring-pulse 4s ease-in-out infinite;
+  }
+  @keyframes apl-ring-pulse {
+    0%,100%{ opacity:0.5; } 50%{ opacity:1; }
+  }
+  /* ── SQL modal ── */
+  #sql-modal {
+    display:none;
+    position:fixed; inset:0; z-index:9999;
+    background:rgba(4,5,15,0.92);
+    backdrop-filter:blur(14px);
+    overflow-y:auto;
+    animation:fadeIn 0.25s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:scale(0.98)} to{opacity:1;transform:scale(1)} }
+  #sql-modal.open { display:block; }
+  .sql-modal-inner {
+    max-width:1100px; margin:0 auto;
+    padding:2rem 1.5rem 4rem;
+  }
+  .sql-modal-header {
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:1.8rem;
+    position:sticky;top:0;z-index:10;
+    background:rgba(4,5,15,0.9);
+    backdrop-filter:blur(10px);
+    padding:1rem 0;
+    border-bottom:1px solid rgba(124,58,237,0.2);
+  }
+  .sql-modal-header h2 {
+    font-size:1.4rem;font-weight:800;
+    background:linear-gradient(135deg,#f8fafc,#a78bfa 60%,#22d3ee);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    font-family:'Orbitron',monospace;
+  }
+  .sql-close {
+    background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);
+    color:#e2e8f0;border-radius:9px;padding:0.4rem 1rem;
+    font-size:0.85rem;cursor:pointer;transition:background 0.2s;
+    font-family:'Inter',sans-serif;
+  }
+  .sql-close:hover{background:rgba(255,255,255,0.16);}
+  .sql-search {
+    width:100%;padding:0.7rem 1rem;
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(124,58,237,0.28);
+    border-radius:10px; color:#e2e8f0;
+    font-size:0.9rem; outline:none;
+    margin-bottom:1.6rem;
+    font-family:'Inter',sans-serif;
+    transition:border-color 0.3s;
+  }
+  .sql-search:focus{border-color:#a78bfa;}
+  .sql-section { margin-bottom:2rem; }
+  .sql-section-title {
+    font-size:0.85rem;font-weight:700;
+    color:#94a3b8;letter-spacing:0.06em;text-transform:uppercase;
+    margin-bottom:0.8rem;
+    display:flex;align-items:center;gap:0.6rem;
+  }
+  .sql-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(440px,1fr));
+    gap:0.8rem;
+  }
+  .sql-card {
+    background:rgba(18,21,42,0.9);
+    border:1px solid rgba(124,58,237,0.18);
+    border-radius:12px; overflow:hidden;
+    transition:border-color 0.2s,transform 0.2s;
+  }
+  .sql-card:hover{border-color:rgba(167,139,250,0.45);transform:translateY(-2px);}
+  .sql-card-head {
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0.55rem 0.85rem;
+    background:rgba(255,255,255,0.025);
+    border-bottom:1px solid rgba(255,255,255,0.05);
+  }
+  .sql-card-meta{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;}
+  .sql-card-title{font-size:0.72rem;font-weight:600;color:#cbd5e1;}
+  .sql-op{padding:0.15rem 0.45rem;border-radius:5px;font-size:0.64rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;}
+  .op-s{background:rgba(16,185,129,0.2);color:#10b981;}
+  .op-i{background:rgba(59,130,246,0.2);color:#3b82f6;}
+  .op-u{background:rgba(245,158,11,0.2);color:#f59e0b;}
+  .op-d{background:rgba(239,68,68,0.2);color:#ef4444;}
+  .op-c{background:rgba(236,72,153,0.2);color:#ec4899;}
+  .rt{font-size:0.62rem;color:#475569;font-family:'Courier New',monospace;}
+  .sql-copy{background:none;border:none;color:#64748b;cursor:pointer;font-size:0.75rem;padding:0.2rem 0.5rem;border-radius:5px;transition:all 0.2s;font-family:'Inter',sans-serif;}
+  .sql-copy:hover{background:rgba(255,255,255,0.08);color:#e2e8f0;}
+  .sql-copy.ok{color:#10b981;}
+  .sql-code{margin:0;padding:0.75rem 0.9rem;overflow-x:auto;font-family:'Courier New',monospace;font-size:0.74rem;line-height:1.65;color:#c4b5fd;}
+  .kw{color:#67e8f9;} .tbl{color:#86efac;} .fn{color:#fde68a;} .cm{color:#4b5563;font-style:italic;} .num{color:#fb923c;}
+  .sql-card.hidden{display:none;}
+  </style>
+</head>
+<body>
+
+  <!-- Metaverse grid -->
+  <div class="metaverse-grid"></div>
+
+  <!-- Warp speed canvas (shows on load) -->
+  <canvas id="warpCanvas"></canvas>
+
+  <!-- Main space canvas -->
+  <canvas id="spaceCanvas"></canvas>
+
+  <!-- Cursor comet trail -->
+  <canvas id="cometCanvas"></canvas>
+
+  <!-- ── HERO ─────────────────────────────────────────────── -->
+  <div class="hero" id="heroScreen">
+    <div class="hero-bg" id="heroBg">
+      <!-- Aurora -->
+      <div class="aurora"></div>
+
+      <!-- Solar system   — parallax layer 1 (slow) -->
+      <div class="parallax-layer" id="layer1" style="position:absolute;inset:0;pointer-events:none;">
+        <!-- Sun -->
+        <div style="position:absolute;top:calc(50% - 120px);right:7%;width:110px;height:110px;">
+          <div class="sun-ring"></div>
+          <div class="sun-ring"></div>
+          <div class="sun-ring"></div>
+          <div class="planet planet-sun" style="position:absolute;inset:0;width:110px;height:110px;"></div>
+        </div>
+      </div>
+
+      <!-- Planets — parallax layer 2 (medium) -->
+      <div class="parallax-layer" id="layer2" style="position:absolute;inset:0;pointer-events:none;">
+        <!-- Earth orbit -->
+        <div style="position:absolute;top:calc(50% - 65px);right:calc(7% + 55px);width:0;height:0;">
+          <div class="planet planet-earth" style="width:50px;height:50px;animation:orbit-earth 25s linear infinite;"></div>
+        </div>
+        <!-- Saturn (bottom-left) -->
+        <div class="planet-saturn-wrap" style="bottom:90px;left:4%;">
+          <div class="planet-saturn" style="width:65px;height:65px;"></div>
+        </div>
+        <!-- Mars -->
+        <div class="planet planet-mars" style="position:absolute;top:14%;left:3%;width:42px;height:42px;animation:float-el 11s ease-in-out infinite;"></div>
+      </div>
+
+      <!-- Deep background planets — parallax layer 3 (fast relative) -->
+      <div class="parallax-layer" id="layer3" style="position:absolute;inset:0;pointer-events:none;">
+        <!-- Jupiter (far back right) -->
+        <div class="planet planet-jupiter" style="position:absolute;bottom:12%;right:1%;width:60px;height:60px;opacity:0.55;"></div>
+        <!-- Distant moon -->
+        <div style="position:absolute;top:28%;right:18%;width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f5f5f5,#9e9e9e);box-shadow:0 0 6px rgba(255,255,255,0.25);animation:float-el 15s ease-in-out infinite 3s;"></div>
+        <!-- Asteroid belt dots -->
+        <div class="asteroid" style="width:4px;height:4px;top:60%;left:20%;animation:float-el 7s ease-in-out infinite 1s;"></div>
+        <div class="asteroid" style="width:3px;height:3px;top:65%;left:24%;animation:float-el 9s ease-in-out infinite 2s;"></div>
+        <div class="asteroid" style="width:5px;height:5px;top:55%;left:28%;animation:float-el 11s ease-in-out infinite;"></div>
+        <div class="asteroid" style="width:2px;height:2px;top:70%;left:32%;animation:float-el 8s ease-in-out infinite 4s;"></div>
+        <div class="asteroid" style="width:4px;height:4px;top:62%;left:18%;animation:float-el 13s ease-in-out infinite 1.5s;"></div>
+      </div>
+    </div>
+
+    <nav class="hero-nav">
+      <div class="logo"><span class="logo-icon">🏠</span> PropVault</div>
+      <div class="nav-links">
+        <a href="#roles" class="nav-link">🚀 Launch</a>
+      </div>
+    </nav>
+
+    <div class="hero-content">
+      <div class="hero-badge" id="heroBadge">🌌 Smart Property Management — Across the Metaverse</div>
+      <h1 class="hero-title">
+        Real Estate,<br/>
+        <span class="gradient-text">Reimagined.</span>
+      </h1>
+      <p class="hero-subtitle">
+        A complete platform for Agents, Owners, and Tenants — navigating properties across dimensions, leases across light-years.
+      </p>
+      <a href="#roles" class="cta-btn" id="ctaBtn">
+        Enter the Universe <span class="cta-arrow">→</span>
+      </a>
+      <div class="hero-stats">
+        <div class="stat"><span class="stat-n">8+</span><span class="stat-l">Properties</span></div>
+        <div class="stat-div"></div>
+        <div class="stat"><span class="stat-n">3</span><span class="stat-l">User Roles</span></div>
+        <div class="stat-div"></div>
+        <div class="stat"><span class="stat-n">∞</span><span class="stat-l">Possibilities</span></div>
+      </div>
+    </div>
+
+    <div class="scroll-indicator">
+      <div class="scroll-arrow">↓</div>
+      <span>Explore the Cosmos</span>
+    </div>
+  </div>
+
+  <!-- ── FEATURES ──────────────────────────────────────────── -->
+  <section class="features-section">
+    <div class="section-label">Platform Features</div>
+    <h2 class="section-title">Everything you need to manage properties</h2>
+    <div class="features-grid" id="featuresGrid">
+      <div class="feat-card"><span class="feat-icon">🔍</span><h3>Smart Search</h3><p>Filter properties by type, location, price range, status, and amenities in real-time.</p></div>
+      <div class="feat-card"><span class="feat-icon">🤖</span><h3>AI Price Estimates</h3><p>Each property gets an AI-estimated market price so buyers and tenants can compare fairly.</p></div>
+      <div class="feat-card"><span class="feat-icon">💬</span><h3>Inquiry System</h3><p>Tenants contact agents directly. Inquiries are tracked from New → Responded → Closed.</p></div>
+      <div class="feat-card"><span class="feat-icon">📄</span><h3>Lease Management</h3><p>Agents create leases, link tenants, and the property status updates automatically.</p></div>
+      <div class="feat-card"><span class="feat-icon">💳</span><h3>Payment Tracking</h3><p>Record rent payments by UPI, NEFT, Cheque, and more — with full payment history.</p></div>
+      <div class="feat-card"><span class="feat-icon">📊</span><h3>Role Dashboards</h3><p>Each user type sees a tailored dashboard with insights relevant to their role.</p></div>
+    </div>
+  </section>
+
+  <!-- Space journey divider -->
+  <div class="space-divider">
+    <div class="space-divider-inner">
+      <span>🌑</span> Travelling through the metaverse <span>🪐</span> Choose your destination <span>🌍</span>
+    </div>
+  </div>
+
+  <!-- ── ROLE PICKER ───────────────────────────────────────── -->
+  <section class="roles-section" id="roles">
+    <div class="section-label">Choose Your Role</div>
+    <h2 class="section-title">Who are you?</h2>
+    <p class="section-sub">Select your portal to enter the universe.</p>
+    <div class="roles-grid" id="rolesGrid">
+      <div class="role-card" id="roleTenant" onclick="selectRole('tenant')">
+        <div class="role-glow tenant-glow"></div>
+        <div class="role-icon">🔑</div>
+        <h3>Tenant</h3>
+        <p>Browse properties, send inquiries, manage your lease, and track your payment history.</p>
+        <div class="role-features">
+          <span>🏘️ Browse Properties</span><span>💬 Send Inquiries</span>
+          <span>📄 My Lease</span><span>💳 Payment History</span>
+        </div>
+        <div class="role-cta">Enter as Tenant →</div>
+      </div>
+      <div class="role-card featured" id="roleAgent" onclick="selectRole('agent')">
+        <div class="role-glow agent-glow"></div>
+        <div class="role-badge-feat">Most Active</div>
+        <div class="role-icon">🤝</div>
+        <h3>Agent</h3>
+        <p>Manage assigned properties, handle inquiries, create leases, and track commission.</p>
+        <div class="role-features">
+          <span>🏢 My Properties</span><span>📋 Manage Inquiries</span>
+          <span>📄 Create Leases</span><span>💰 Commission</span>
+        </div>
+        <div class="role-cta">Enter as Agent →</div>
+      </div>
+      <div class="role-card" id="roleOwner" onclick="selectRole('owner')">
+        <div class="role-glow owner-glow"></div>
+        <div class="role-icon">👤</div>
+        <h3>Owner</h3>
+        <p>List your properties, assign agents, monitor inquiries and view rental income.</p>
+        <div class="role-features">
+          <span>➕ Add Property</span><span>👁️ View Inquiries</span>
+          <span>📊 Lease Overview</span><span>💵 Rental Income</span>
+        </div>
+        <div class="role-cta">Enter as Owner →</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── AUTH MODAL ────────────────────────────────────────── -->
+  <div class="auth-overlay hidden" id="authOverlay">
+    <div class="auth-modal">
+      <button class="auth-close" onclick="closeAuth()">✕</button>
+      <div class="auth-modal-inner">
+        <div class="auth-header">
+          <div class="auth-role-icon" id="authRoleIcon">🔑</div>
+          <h2 id="authTitle">Tenant Login</h2>
+        </div>
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="tabLogin"    onclick="switchTab('login')">Login</button>
+          <button class="auth-tab"        id="tabRegister" onclick="switchTab('register')">Register</button>
+        </div>
+        <form id="loginForm" class="auth-form">
+          <div class="form-group"><label>Email</label><input type="email" id="loginEmail" placeholder="your@email.com" required /></div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="loginPassword" placeholder="••••••••" required />
+            <button type="button" id="forgotLink" onclick="showForgotForm()" style="background:none;border:none;color:var(--accent2);font-size:12px;cursor:pointer;text-align:right;padding:4px 0 0;align-self:flex-end;text-decoration:underline;font-family:inherit;">Forgot your password?</button>
+          </div>
+          <div class="auth-error hidden" id="loginError"></div>
+          <button type="submit" class="auth-submit" id="loginBtn">Login →</button>
+        </form>
+
+        <!-- Forgot Password Panel (hidden by default) -->
+        <div id="forgotForm" class="auth-form hidden">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+            🔐 Enter your registered email. We'll generate a temporary password you can use to log in, then change it from <strong>My Profile</strong>.
+          </div>
+          <div class="form-group"><label>Registered Email</label><input type="email" id="forgotEmail" placeholder="your@email.com" /></div>
+          <div id="forgotResult" style="display:none;margin:8px 0;padding:14px 16px;border-radius:12px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);"></div>
+          <div style="display:flex;gap:10px;">
+            <button type="button" class="auth-submit" id="forgotBtn" onclick="forgotPassword()" style="flex:1;">🔑 Reset Password</button>
+            <button type="button" onclick="hideForgotForm()" style="background:rgba(255,255,255,0.07);border:1px solid var(--border);color:var(--muted);padding:12px 18px;border-radius:var(--radius-sm);font-size:14px;cursor:pointer;font-family:inherit;">← Back</button>
+          </div>
+        </div>
+        <form id="registerForm" class="auth-form hidden">
+          <div class="form-row">
+            <div class="form-group"><label>Full Name</label><input type="text" id="regName" placeholder="Ravi Sharma" required /></div>
+            <div class="form-group"><label>Username</label><input type="text" id="regUsername" placeholder="ravi123" required /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Email</label><input type="email" id="regEmail" placeholder="ravi@email.com" required /></div>
+            <div class="form-group"><label>Phone</label><input type="text" id="regPhone" placeholder="9812345678" required /></div>
+          </div>
+          <div id="agentFields" style="display:none">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Commission Rate (%) <span style="font-size:11px;color:var(--muted)">— for property sales</span></label>
+                <input type="number" id="regCommission" placeholder="5.0" min="0" max="25" step="0.5" />
+              </div>
+              <div class="form-group">
+                <label>Lease Commission Days <span style="font-size:11px;color:var(--muted)">— days of rent earned once (<span id="regDaysVal">15</span> days)</span></label>
+                <input type="range" id="regLeaseDays" min="0" max="60" value="15" step="1"
+                  oninput="document.getElementById('regDaysVal').textContent=this.value"
+                  style="width:100%;accent-color:var(--accent2);cursor:pointer;margin-top:6px" />
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:2px"><span>0 days</span><span>60 days</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group"><label>Password</label><input type="password" id="regPassword" placeholder="min 6 characters" required minlength="6" /></div>
+          <div class="auth-error hidden" id="registerError"></div>
+          <button type="submit" class="auth-submit" id="registerBtn">Create Account →</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FOOTER ─────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="footer-logo">🏠 PropVault</div>
+    <p>DBMS Project 2026 · Built with Node.js, Express &amp; MySQL</p>
+  </footer>
+
+  <!-- ── Analytics mini-planet ── -->
+  <div id="analytics-planet" title="Click to explore SQL Queries">
+    <div class="apl-ring"></div>
+    <div class="apl-body"><div class="apl-label">Analytics</div></div>
+  </div>
+
+  <!-- ── SQL Queries Modal ── -->
+  <div id="sql-modal">
+    <div class="sql-modal-inner">
+      <div class="sql-modal-header">
+        <h2>📡 SQL Query Reference</h2>
+        <button class="sql-close" onclick="closeSqlModal()">✕ Close</button>
+      </div>
+      <input class="sql-search" id="sqlSearch" type="text" placeholder="Search queries, tables, keywords…"/>
+
+      <!-- Schema -->
+      <div class="sql-section" id="sec-schema">
+        <div class="sql-section-title">🏗️ Schema &amp; DDL <span class="rt">schema.sql / sale-migration.sql</span></div>
+        <div class="sql-grid">
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-c">CREATE</span><span class="sql-card-title">Create Database</span><span class="rt">schema.sql</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">CREATE DATABASE IF NOT EXISTS</span> property_mgmt
+  <span class="kw">CHARACTER SET</span> utf8mb4 <span class="kw">COLLATE</span> utf8mb4_unicode_ci;</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-c">CREATE</span><span class="sql-card-title">AGENT table</span><span class="rt">schema.sql</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">CREATE TABLE IF NOT EXISTS</span> <span class="tbl">AGENT</span> (
+  Agent_ID INT <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+  Name     <span class="kw">VARCHAR</span>(<span class="num">100</span>) <span class="kw">NOT NULL</span>,
+  Phone    <span class="kw">VARCHAR</span>(<span class="num">20</span>)  <span class="kw">NOT NULL</span>,
+  Commission_Rate <span class="kw">DECIMAL</span>(<span class="num">5</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>,
+  <span class="kw">CONSTRAINT</span> chk_commission <span class="kw">CHECK</span> (Commission_Rate <span class="kw">BETWEEN</span> <span class="num">0</span> <span class="kw">AND</span> <span class="num">25</span>)
+);</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-c">CREATE</span><span class="sql-card-title">PROPERTY table</span><span class="rt">schema.sql</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">CREATE TABLE IF NOT EXISTS</span> <span class="tbl">PROPERTY</span> (
+  Property_ID INT <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+  Title VARCHAR(<span class="num">200</span>) <span class="kw">NOT NULL</span>, Type VARCHAR(<span class="num">50</span>) <span class="kw">NOT NULL</span>,
+  Location VARCHAR(<span class="num">255</span>) <span class="kw">NOT NULL</span>, Price <span class="kw">DECIMAL</span>(<span class="num">14</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>,
+  Status VARCHAR(<span class="num">20</span>) <span class="kw">DEFAULT</span> <span class="str">'Available'</span>, AI_Est_Price <span class="kw">DECIMAL</span>(<span class="num">14</span>,<span class="num">2</span>),
+  Owner_ID INT <span class="kw">NOT NULL</span>, Agent_ID INT <span class="kw">NOT NULL</span>
+);</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-c">CREATE</span><span class="sql-card-title">SALE table (migration)</span><span class="rt">sale-migration.sql</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">CREATE TABLE IF NOT EXISTS</span> <span class="tbl">SALE</span> (
+  Sale_ID INT <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+  Property_ID INT <span class="kw">NOT NULL</span>, Buyer_Tenant_ID INT <span class="kw">NOT NULL</span>,
+  Amount <span class="kw">DECIMAL</span>(<span class="num">15</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>, Method VARCHAR(<span class="num">30</span>),
+  Sale_Status <span class="kw">ENUM</span>(<span class="str">'Pending_Payment'</span>,<span class="str">'Completed'</span>,<span class="str">'Cancelled'</span>)
+    <span class="kw">DEFAULT</span> <span class="str">'Pending_Payment'</span>
+);</pre></div>
+        </div>
+      </div>
+
+      <!-- Dashboard -->
+      <div class="sql-section" id="sec-dash">
+        <div class="sql-section-title">📊 Dashboard <span class="rt">routes/dashboard.js</span></div>
+        <div class="sql-grid">
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-s">SELECT</span><span class="sql-card-title">Count Totals</span><span class="rt">GET /api/dashboard</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> total_properties <span class="kw">FROM</span> <span class="tbl">PROPERTY</span>;
+<span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> total_agents    <span class="kw">FROM</span> <span class="tbl">AGENT</span>;
+<span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> total_tenants   <span class="kw">FROM</span> <span class="tbl">TENANT</span>;
+<span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> total_owners    <span class="kw">FROM</span> <span class="tbl">OWNER</span>;</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-s">SELECT</span><span class="sql-card-title">Active Leases &amp; Open Inquiries</span><span class="rt">GET /api/dashboard</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> active_leases <span class="kw">FROM</span> <span class="tbl">LEASE</span>
+<span class="kw">WHERE</span> End_Date &gt;= <span class="fn">CURDATE</span>();
+<span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> open_inquiries <span class="kw">FROM</span> <span class="tbl">INQUIRY</span>
+<span class="kw">WHERE</span> Status <span class="kw">IN</span> (<span class="str">'New'</span>,<span class="str">'Responded'</span>);</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-s">SELECT</span><span class="sql-card-title">Total Revenue</span><span class="rt">GET /api/dashboard</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">SELECT IFNULL</span>(<span class="fn">SUM</span>(Amount),<span class="num">0</span>) <span class="kw">AS</span> total_revenue
+<span class="kw">FROM</span> <span class="tbl">PAYMENT</span> <span class="kw">WHERE</span> Status = <span class="str">'Success'</span>;</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-s">SELECT</span><span class="sql-card-title">Status Breakdown</span><span class="rt">GET /api/dashboard</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">SELECT</span> Status, <span class="fn">COUNT</span>(*) <span class="kw">AS</span> count
+<span class="kw">FROM</span> <span class="tbl">PROPERTY</span> <span class="kw">GROUP BY</span> Status;</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-s">SELECT</span><span class="sql-card-title">Recent Payments (last 5)</span><span class="rt">GET /api/dashboard</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">SELECT</span> pay.*, p.Title <span class="kw">AS</span> Property_Title
+<span class="kw">FROM</span> <span class="tbl">PAYMENT</span> pay
+<span class="kw">JOIN</span> <span class="tbl">LEASE</span> l <span class="kw">ON</span> pay.Lease_ID = l.Lease_ID
+<span class="kw">JOIN</span> <span class="tbl">PROPERTY</span> p <span class="kw">ON</span> l.Property_ID = p.Property_ID
+<span class="kw">ORDER BY</span> pay.Payment_Date <span class="kw">DESC LIMIT</span> <span class="num">5</span>;</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-s">SELECT</span><span class="sql-card-title">Top Agents by Property Count</span><span class="rt">GET /api/dashboard</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">SELECT</span> a.Name, <span class="fn">COUNT</span>(p.Property_ID) <span class="kw">AS</span> property_count
+<span class="kw">FROM</span> <span class="tbl">AGENT</span> a
+<span class="kw">LEFT JOIN</span> <span class="tbl">PROPERTY</span> p <span class="kw">ON</span> a.Agent_ID = p.Agent_ID
+<span class="kw">GROUP BY</span> a.Agent_ID
+<span class="kw">ORDER BY</span> property_count <span class="kw">DESC LIMIT</span> <span class="num">5</span>;</pre></div>
+        </div>
+      </div>
+
+      <!-- Properties -->
+      <div class="sql-section" id="sec-props">
+        <div class="sql-section-title">🏠 Properties <span class="rt">routes/properties.js</span></div>
+        <div class="sql-grid">
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-s">SELECT</span><span class="sql-card-title">All Properties with Owner &amp; Agent</span><span class="rt">GET /api/properties</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">SELECT</span> p.*, o.Name <span class="kw">AS</span> Owner_Name, a.Name <span class="kw">AS</span> Agent_Name
+<span class="kw">FROM</span> <span class="tbl">PROPERTY</span> p
+<span class="kw">JOIN</span> <span class="tbl">OWNER</span> o <span class="kw">ON</span> p.Owner_ID = o.Owner_ID
+<span class="kw">JOIN</span> <span class="tbl">AGENT</span> a <span class="kw">ON</span> p.Agent_ID = a.Agent_ID
+<span class="kw">ORDER BY</span> p.Property_ID;</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-s">SELECT</span><span class="sql-card-title">Property by ID + Amenities</span><span class="rt">GET /api/properties/:id</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">SELECT</span> p.*, o.Name <span class="kw">AS</span> Owner_Name, a.Name <span class="kw">AS</span> Agent_Name
+<span class="kw">FROM</span> <span class="tbl">PROPERTY</span> p
+<span class="kw">JOIN</span> <span class="tbl">OWNER</span> o <span class="kw">ON</span> p.Owner_ID = o.Owner_ID
+<span class="kw">JOIN</span> <span class="tbl">AGENT</span> a <span class="kw">ON</span> p.Agent_ID = a.Agent_ID
+<span class="kw">WHERE</span> p.Property_ID = ?;
+<span class="kw">SELECT</span> am.Amenity_Name <span class="kw">FROM</span> <span class="tbl">AMENITY</span> am
+<span class="kw">JOIN</span> <span class="tbl">PROPERTY_AMENITY</span> pa <span class="kw">ON</span> am.Amenity_ID = pa.Amenity_ID
+<span class="kw">WHERE</span> pa.Property_ID = ?;</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-i">INSERT</span><span class="sql-card-title">Add New Property</span><span class="rt">POST /api/properties</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">INSERT INTO</span> <span class="tbl">PROPERTY</span>
+  (Title,Type,Location,Price,Status,AI_Est_Price,Owner_ID,Agent_ID)
+<span class="kw">VALUES</span> (?,?,?,?,?,?,?,?);
+<span class="cm">-- AI_Est_Price = Price × (0.9 + random × 0.2)</span></pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-s">SELECT</span><span class="sql-card-title">Sold-Property Guard</span><span class="rt">PUT /api/properties/:id</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">SELECT</span> Status <span class="kw">FROM</span> <span class="tbl">PROPERTY</span> <span class="kw">WHERE</span> Property_ID = ?;
+<span class="cm">-- Returns 403 if Status = 'Sold'</span></pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-u">UPDATE</span><span class="sql-card-title">Update Property</span><span class="rt">PUT /api/properties/:id</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">UPDATE</span> <span class="tbl">PROPERTY</span>
+<span class="kw">SET</span> Title=?,Type=?,Location=?,Price=?,Status=?,Owner_ID=?,Agent_ID=?
+<span class="kw">WHERE</span> Property_ID=?;</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-d">DELETE</span><span class="sql-card-title">Delete Property</span><span class="rt">DELETE /api/properties/:id</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">DELETE FROM</span> <span class="tbl">PROPERTY</span> <span class="kw">WHERE</span> Property_ID=?;</pre></div>
+        </div>
+      </div>
+
+      <!-- Payments -->
+      <div class="sql-section" id="sec-pay">
+        <div class="sql-section-title">💳 Payments <span class="rt">routes/payments.js</span></div>
+        <div class="sql-grid">
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-s">SELECT</span><span class="sql-card-title">All Payments with Property</span><span class="rt">GET /api/payments</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">SELECT</span> pay.*, l.Monthly_Rent, p.Title <span class="kw">AS</span> Property_Title
+<span class="kw">FROM</span> <span class="tbl">PAYMENT</span> pay
+<span class="kw">JOIN</span> <span class="tbl">LEASE</span> l <span class="kw">ON</span> pay.Lease_ID = l.Lease_ID
+<span class="kw">JOIN</span> <span class="tbl">PROPERTY</span> p <span class="kw">ON</span> l.Property_ID = p.Property_ID
+<span class="kw">ORDER BY</span> pay.Payment_Date <span class="kw">DESC</span>;</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-i">INSERT</span><span class="sql-card-title">Record Payment</span><span class="rt">POST /api/payments</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">INSERT INTO</span> <span class="tbl">PAYMENT</span>
+  (Payment_Date,Amount,Method,Status,Lease_ID)
+<span class="kw">VALUES</span> (?,?,?,?,?);</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-u">UPDATE</span><span class="sql-card-title">Update Payment Status</span><span class="rt">PUT /api/payments/:id</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">UPDATE</span> <span class="tbl">PAYMENT</span> <span class="kw">SET</span> Status=? <span class="kw">WHERE</span> Payment_ID=?;</pre></div>
+        </div>
+      </div>
+
+      <!-- Leases -->
+      <div class="sql-section" id="sec-lease">
+        <div class="sql-section-title">📄 Leases <span class="rt">routes/leases.js</span></div>
+        <div class="sql-grid">
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-s">SELECT</span><span class="sql-card-title">All Leases with Tenants (GROUP_CONCAT)</span><span class="rt">GET /api/leases</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">SELECT</span> l.*, p.Title <span class="kw">AS</span> Property_Title,
+  <span class="fn">GROUP_CONCAT</span>(t.Name <span class="kw">SEPARATOR</span> <span class="str">', '</span>) <span class="kw">AS</span> Tenants
+<span class="kw">FROM</span> <span class="tbl">LEASE</span> l
+<span class="kw">JOIN</span> <span class="tbl">PROPERTY</span> p <span class="kw">ON</span> l.Property_ID = p.Property_ID
+<span class="kw">LEFT JOIN</span> <span class="tbl">TENANT_LEASE</span> tl <span class="kw">ON</span> l.Lease_ID = tl.Lease_ID
+<span class="kw">LEFT JOIN</span> <span class="tbl">TENANT</span> t <span class="kw">ON</span> tl.Tenant_ID = t.Tenant_ID
+<span class="kw">GROUP BY</span> l.Lease_ID <span class="kw">ORDER BY</span> l.Start_Date <span class="kw">DESC</span>;</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-i">INSERT</span><span class="sql-card-title">Create Lease (Transaction)</span><span class="rt">POST /api/leases</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="cm">-- Wrapped in a transaction with rollback</span>
+<span class="kw">INSERT INTO</span> <span class="tbl">LEASE</span>
+  (Start_Date,End_Date,Monthly_Rent,Security_Deposit,Property_ID)
+<span class="kw">VALUES</span> (?,?,?,?,?);
+<span class="kw">INSERT INTO</span> <span class="tbl">TENANT_LEASE</span> (Tenant_ID,Lease_ID) <span class="kw">VALUES</span> (?,?);</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-u">UPDATE</span><span class="sql-card-title">Update Lease</span><span class="rt">PUT /api/leases/:id</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">UPDATE</span> <span class="tbl">LEASE</span>
+<span class="kw">SET</span> Start_Date=?,End_Date=?,Monthly_Rent=?,Security_Deposit=?,Property_ID=?
+<span class="kw">WHERE</span> Lease_ID=?;</pre></div>
+        </div>
+      </div>
+
+      <!-- Inquiries -->
+      <div class="sql-section" id="sec-inq">
+        <div class="sql-section-title">💬 Inquiries <span class="rt">routes/inquiries.js</span></div>
+        <div class="sql-grid">
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-s">SELECT</span><span class="sql-card-title">All Inquiries (4-table JOIN)</span><span class="rt">GET /api/inquiries</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">SELECT</span> i.*, t.Name <span class="kw">AS</span> Tenant_Name,
+  p.Title <span class="kw">AS</span> Property_Title, a.Name <span class="kw">AS</span> Agent_Name
+<span class="kw">FROM</span> <span class="tbl">INQUIRY</span> i
+<span class="kw">JOIN</span> <span class="tbl">TENANT</span> t   <span class="kw">ON</span> i.Tenant_ID=t.Tenant_ID
+<span class="kw">JOIN</span> <span class="tbl">PROPERTY</span> p <span class="kw">ON</span> i.Property_ID=p.Property_ID
+<span class="kw">JOIN</span> <span class="tbl">AGENT</span> a   <span class="kw">ON</span> i.Agent_ID=a.Agent_ID
+<span class="kw">ORDER BY</span> i.Date <span class="kw">DESC</span>;</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-i">INSERT</span><span class="sql-card-title">Create Inquiry</span><span class="rt">POST /api/inquiries</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">INSERT INTO</span> <span class="tbl">INQUIRY</span>
+  (Message,Date,Status,Tenant_ID,Property_ID,Agent_ID)
+<span class="kw">VALUES</span> (?,?,?,?,?,?);</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-u">UPDATE</span><span class="sql-card-title">Update Inquiry Status</span><span class="rt">PUT /api/inquiries/:id</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">UPDATE</span> <span class="tbl">INQUIRY</span> <span class="kw">SET</span> Status=? <span class="kw">WHERE</span> Inquiry_ID=?;</pre></div>
+        </div>
+      </div>
+
+      <!-- Amenities -->
+      <div class="sql-section" id="sec-am">
+        <div class="sql-section-title">🏊 Amenities <span class="rt">routes/amenities.js</span></div>
+        <div class="sql-grid">
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-s">SELECT</span><span class="sql-card-title">All Amenities</span><span class="rt">GET /api/amenities</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">AMENITY</span> <span class="kw">ORDER BY</span> Amenity_ID;</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-i">INSERT</span><span class="sql-card-title">Add Amenity</span><span class="rt">POST /api/amenities</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">INSERT INTO</span> <span class="tbl">AMENITY</span> (Amenity_Name) <span class="kw">VALUES</span> (?);</pre></div>
+          <div class="sql-card"><div class="sql-card-head"><div class="sql-card-meta"><span class="sql-op op-d">DELETE</span><span class="sql-card-title">Delete Amenity</span><span class="rt">DELETE /api/amenities/:id</span></div><button class="sql-copy" onclick="cpQ(this)">Copy</button></div><pre class="sql-code"><span class="kw">DELETE FROM</span> <span class="tbl">AMENITY</span> <span class="kw">WHERE</span> Amenity_ID=?;</pre></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="js/landing.js"></script>
+  <script>
+  /* =====================================================================
+     METAVERSE UNIVERSE ENGINE
+     - Warp-speed intro
+     - Rich starfield with galaxy spiral & constellations
+     - Mouse parallax on planets
+     - Comet cursor trail
+     - Floating data particles
+     - Scroll-triggered card animations
+  ===================================================================== */
+  (function() {
+    // ── Utils ───────────────────────────────────────────────
+    const $ = id => document.getElementById(id);
+    const rand = (a,b) => Math.random()*(b-a)+a;
+    const lerp = (a,b,t) => a+(b-a)*t;
+
+    // ── Mouse tracking ──────────────────────────────────────
+    let mx = window.innerWidth/2, my = window.innerHeight/2;
+    let targetMx = mx, targetMy = my;
+    document.addEventListener('mousemove', e => {
+      targetMx = e.clientX;
+      targetMy = e.clientY;
+    });
+
+    // ── Main space canvas ───────────────────────────────────
+    const sc = $('spaceCanvas');
+    const sctx = sc.getContext('2d');
+    let W, H;
+    function resize() {
+      W = sc.width  = window.innerWidth;
+      H = sc.height = window.innerHeight;
+      wc.width  = W; wc.height = H;
+      cc.width  = W; cc.height = H;
+    }
+    window.addEventListener('resize', resize);
+
+    // ── Warp canvas ─────────────────────────────────────────
+    const wc = $('warpCanvas');
+    const wctx = wc.getContext('2d');
+
+    // ── Comet canvas ─────────────────────────────────────────
+    const cc = $('cometCanvas');
+    const cctx = cc.getContext('2d');
+
+    resize();
+
+    // ── Stars (3 depth layers) ──────────────────────────────
+    const starLayers = [
+      [], // far (slow)
+      [], // mid
+      []  // near (fast)
+    ];
+    const layerSpeeds = [0.04, 0.1, 0.22];
+    const layerCounts = [160, 80, 30];
+    for (let l=0; l<3; l++) {
+      for (let i=0; i<layerCounts[l]; i++) {
+        starLayers[l].push({
+          x: rand(0,W), y: rand(0,H),
+          r: rand(0.3, 0.8 + l*0.7),
+          speed: rand(0.05,0.15) + l*0.06,
+          opacity: rand(0.3,0.9),
+          hue: [260,190,40,220,320][Math.floor(rand(0,5))],
+          blink: rand(0.003,0.015),
+          phase: rand(0, Math.PI*2)
+        });
+      }
+    }
+
+    // ── Galaxy spiral ───────────────────────────────────────
+    const galaxyArms = [];
+    const NUM_ARMS = 3, STARS_PER_ARM = 80;
+    for (let arm=0; arm<NUM_ARMS; arm++) {
+      const armAngleOffset = (arm/NUM_ARMS) * Math.PI*2;
+      for (let i=0; i<STARS_PER_ARM; i++) {
+        const t  = i/STARS_PER_ARM;
+        const angle = armAngleOffset + t * Math.PI * 3.5;
+        const dist  = t * Math.min(W,H) * 0.28;
+        const spread = dist * 0.12;
+        galaxyArms.push({
+          ox: rand(-spread,spread),
+          oy: rand(-spread,spread),
+          baseAngle: angle,
+          baseDist:  dist,
+          r: rand(0.3, 1.2),
+          hue: arm===0 ? 260 : arm===1 ? 190 : 40,
+          opacity: rand(0.2, 0.6) * (1 - t*0.5)
+        });
+      }
+    }
+    let galaxyAngle = 0;
+    const GALAXY_CX = 0.75, GALAXY_CY = 0.65; // positioned bottom-right area
+
+    // ── Constellation lines ─────────────────────────────────
+    const CONSTELLATIONS = 5; // number of groups
+    let constellationPairs = [];
+    function buildConstellations() {
+      constellationPairs = [];
+      const pool = starLayers[0].filter(s => s.opacity > 0.55).slice(0, 40);
+      for (let g=0; g<CONSTELLATIONS; g++) {
+        const size = Math.floor(rand(3,6));
+        const group = [];
+        for (let i=0; i<size; i++) {
+          const idx = Math.floor(rand(0, pool.length));
+          group.push(pool[idx]);
+        }
+        for (let i=0; i<group.length-1; i++) {
+          constellationPairs.push([group[i], group[i+1]]);
+        }
+      }
+    }
+    buildConstellations();
+    window.addEventListener('resize', buildConstellations);
+
+    // ── Shooting stars ──────────────────────────────────────
+    let shooters = [];
+    function spawnShooter() {
+      const hues = [260, 190, 40, 0, 300];
+      shooters.push({
+        x: rand(-W*0.1, W*1.2), y: rand(0, H*0.5),
+        len: rand(100,220), spd: rand(9,16),
+        angle: Math.PI/5 + rand(-0.4,0.4),
+        opacity: 1,
+        hue: hues[Math.floor(rand(0,hues.length))],
+        width: rand(1,2.5)
+      });
+    }
+    setInterval(spawnShooter, 2200);
+
+    // ── Floating hex/binary data particles ─────────────────
+    const DATA_CHARS = ['01','10','FF','A7','3D','∞','λ','∑','Ω','◈','⬡','⬢'];
+    function spawnDataParticle() {
+      const el = document.createElement('div');
+      el.className='data-particle';
+      el.textContent = DATA_CHARS[Math.floor(rand(0,DATA_CHARS.length))];
+      el.style.left  = rand(5,95)+'%';
+      el.style.bottom= '-20px';
+      el.style.animationDuration = rand(8,18)+'s';
+      el.style.animationDelay   = '0s';
+      el.style.opacity=0;
+      document.body.appendChild(el);
+      setTimeout(()=> el.remove(), 18000);
+    }
+    setInterval(spawnDataParticle, 1800);
+
+    // ── Comet trail ─────────────────────────────────────────
+    const comet = { x:mx, y:my, trail:[] };
+    const MAX_TRAIL = 28;
+
+    // ── Warp speed intro ────────────────────────────────────
+    let warpLines = [], warpProgress = 1.0;  // 0=full warp, 1=done
+    function initWarp() {
+      warpLines = [];
+      for (let i=0; i<160; i++) {
+        const angle = rand(0, Math.PI*2);
+        const dist  = rand(0, Math.min(W,H)*0.5);
+        warpLines.push({
+          angle, dist,
+          cx: W/2, cy: H/2,
+          speed: rand(15,40),
+          len: rand(30,120),
+          hue: [260,190,40,0][Math.floor(rand(0,4))],
+          opacity: rand(0.4,0.9)
+        });
+      }
+      warpProgress = 0;
+    }
+    initWarp();
+
+    // ── Main render loop ────────────────────────────────────
+    let t = 0;
+    function draw() {
+      t += 0.016;
+      mx = lerp(mx, targetMx, 0.06);
+      my = lerp(my, targetMy, 0.06);
+      galaxyAngle += 0.0003;
+
+      // ─ Space canvas ─
+      sctx.clearRect(0,0,W,H);
+
+      // Galaxy spiral
+      const gx = GALAXY_CX*W, gy = GALAXY_CY*H;
+      galaxyArms.forEach(s => {
+        const angle = s.baseAngle + galaxyAngle;
+        const x = gx + Math.cos(angle)*s.baseDist + s.ox;
+        const y = gy + Math.sin(angle)*s.baseDist*0.45 + s.oy;
+        const alpha = s.opacity * (0.5+0.5*Math.sin(t*2+s.baseAngle));
+        sctx.beginPath();
+        sctx.arc(x,y,s.r,0,Math.PI*2);
+        sctx.fillStyle=`hsla(${s.hue},80%,85%,${alpha})`;
+        sctx.fill();
+      });
+
+      // Galaxy core glow
+      const gg = sctx.createRadialGradient(gx,gy,0,gx,gy,80);
+      gg.addColorStop(0,'rgba(167,139,250,0.25)');
+      gg.addColorStop(0.3,'rgba(124,58,237,0.08)');
+      gg.addColorStop(1,'transparent');
+      sctx.beginPath(); sctx.arc(gx,gy,80,0,Math.PI*2);
+      sctx.fillStyle=gg; sctx.fill();
+
+      // Constellation lines
+      sctx.save();
+      constellationPairs.forEach(([a,b]) => {
+        const dx = a.x-b.x, dy = a.y-b.y;
+        const dist = Math.sqrt(dx*dx+dy*dy);
+        if (dist > W*0.3) return; // skip very long lines
+        sctx.beginPath();
+        sctx.moveTo(a.x,a.y); sctx.lineTo(b.x,b.y);
+        sctx.strokeStyle=`rgba(167,139,250,${0.04+0.04*Math.sin(t+a.phase)})`;
+        sctx.lineWidth=0.7;
+        sctx.stroke();
+      });
+      sctx.restore();
+
+      // Stars (3 layers with parallax offset)
+      starLayers.forEach((layer,li) => {
+        const spd = layerSpeeds[li];
+        const offX = (mx/W - 0.5) * spd * -60;
+        const offY = (my/H - 0.5) * spd * -40;
+        layer.forEach(s => {
+          const alpha = s.opacity * (0.5+0.5*Math.sin(t*s.blink*60+s.phase));
+          sctx.beginPath();
+          sctx.arc(s.x+offX, s.y+offY, s.r, 0, Math.PI*2);
+          sctx.fillStyle=`hsla(${s.hue},70%,90%,${alpha})`;
+          sctx.fill();
+          // Subtle cross-sparkle for bright near-layer stars
+          if (li===2 && s.opacity>0.7) {
+            const gl = sctx.createRadialGradient(s.x+offX,s.y+offY,0,s.x+offX,s.y+offY,s.r*6);
+            gl.addColorStop(0,`hsla(${s.hue},80%,95%,0.3)`);
+            gl.addColorStop(1,'transparent');
+            sctx.beginPath(); sctx.arc(s.x+offX,s.y+offY,s.r*6,0,Math.PI*2);
+            sctx.fillStyle=gl; sctx.fill();
+          }
+          s.y -= s.speed;
+          if(s.y < -4){ s.y=H+4; s.x=rand(0,W); }
+        });
+      });
+
+      // Shooting stars
+      shooters = shooters.filter(s=>s.opacity>0.02);
+      shooters.forEach(s => {
+        const ex=s.x+Math.cos(s.angle)*s.len, ey=s.y+Math.sin(s.angle)*s.len;
+        const g=sctx.createLinearGradient(s.x,s.y,ex,ey);
+        g.addColorStop(0,`hsla(${s.hue},80%,98%,${s.opacity})`);
+        g.addColorStop(0.5,`hsla(${s.hue},60%,80%,${s.opacity*0.35})`);
+        g.addColorStop(1,'hsla(0,0%,100%,0)');
+        sctx.beginPath(); sctx.moveTo(s.x,s.y); sctx.lineTo(ex,ey);
+        sctx.strokeStyle=g; sctx.lineWidth=s.width; sctx.stroke();
+        // sparkle head
+        const hg=sctx.createRadialGradient(s.x,s.y,0,s.x,s.y,4);
+        hg.addColorStop(0,`hsla(${s.hue},100%,100%,${s.opacity})`);
+        hg.addColorStop(1,'transparent');
+        sctx.beginPath(); sctx.arc(s.x,s.y,4,0,Math.PI*2);
+        sctx.fillStyle=hg; sctx.fill();
+        s.x+=Math.cos(s.angle)*s.spd; s.y+=Math.sin(s.angle)*s.spd;
+        s.opacity-=0.012;
+      });
+
+      // ─ Parallax on planets ─
+      const p1 = 0.018, p2 = 0.035;
+      const offX1=(mx/W-0.5)*-p1*W, offY1=(my/H-0.5)*-p1*H;
+      const offX2=(mx/W-0.5)*-p2*W, offY2=(my/H-0.5)*-p2*H;
+      const l1 = $('layer1'), l2 = $('layer2'), l3 = $('layer3');
+      if(l1) l1.style.transform=`translate(${offX1}px,${offY1}px)`;
+      if(l2) { const f=0.055; l2.style.transform=`translate(${(mx/W-0.5)*-f*W}px,${(my/H-0.5)*-f*H}px)`; }
+      if(l3) { const f=0.09;  l3.style.transform=`translate(${(mx/W-0.5)*-f*W}px,${(my/H-0.5)*-f*H}px)`; }
+
+      // ─ Warp intro ─
+      if (warpProgress < 1) {
+        warpProgress += 0.018;
+        wctx.clearRect(0,0,W,H);
+        const fade = Math.max(0, 1-warpProgress);
+        warpLines.forEach(wl => {
+          const d = wl.dist * (1 + warpProgress * 2.5);
+          const x1 = wl.cx + Math.cos(wl.angle)*(d - wl.len*warpProgress);
+          const y1 = wl.cy + Math.sin(wl.angle)*(d - wl.len*warpProgress);
+          const x2 = wl.cx + Math.cos(wl.angle)*d;
+          const y2 = wl.cy + Math.sin(wl.angle)*d;
+          const g = wctx.createLinearGradient(x1,y1,x2,y2);
+          g.addColorStop(0,`hsla(${wl.hue},80%,90%,0)`);
+          g.addColorStop(1,`hsla(${wl.hue},80%,95%,${wl.opacity*fade})`);
+          wctx.beginPath(); wctx.moveTo(x1,y1); wctx.lineTo(x2,y2);
+          wctx.strokeStyle=g; wctx.lineWidth=1.5; wctx.stroke();
+        });
+      } else { wctx.clearRect(0,0,W,H); }
+
+      // ─ Comet trail ─
+      comet.trail.push({ x:mx, y:my, age:0, hue: 260+Math.sin(t)*70 });
+      if (comet.trail.length > MAX_TRAIL) comet.trail.shift();
+      cctx.clearRect(0,0,W,H);
+      comet.trail.forEach((p,i) => {
+        p.age++;
+        const alpha = (i/comet.trail.length)*0.5;
+        const radius = (i/comet.trail.length)*5;
+        if (radius < 0.2 || alpha < 0.01) return;
+        const g = cctx.createRadialGradient(p.x,p.y,0,p.x,p.y,radius);
+        g.addColorStop(0,`hsla(${p.hue},80%,85%,${alpha})`);
+        g.addColorStop(1,'transparent');
+        cctx.beginPath(); cctx.arc(p.x,p.y,radius,0,Math.PI*2);
+        cctx.fillStyle=g; cctx.fill();
+      });
+      // Cursor glow dot
+      const cg = cctx.createRadialGradient(mx,my,0,mx,my,16);
+      cg.addColorStop(0,`rgba(167,139,250,0.35)`);
+      cg.addColorStop(0.5,`rgba(34,211,238,0.12)`);
+      cg.addColorStop(1,'transparent');
+      cctx.beginPath(); cctx.arc(mx,my,16,0,Math.PI*2);
+      cctx.fillStyle=cg; cctx.fill();
+
+      requestAnimationFrame(draw);
+    }
+    draw();
+
+    // ── Scroll-triggered animations ──────────────────────────
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) e.target.classList.add('visible');
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.feat-card, .role-card').forEach(el => observer.observe(el));
+
+    // ── Stagger card animation delays ───────────────────────
+    document.querySelectorAll('#featuresGrid .feat-card').forEach((el,i) => {
+      el.style.transitionDelay = (i*0.08)+'s';
+    });
+    document.querySelectorAll('#rolesGrid .role-card').forEach((el,i) => {
+      el.style.transitionDelay = (i*0.12)+'s';
+    });
+
+  })();
+
+  /* ─── Analytics mini-planet random movement ─── */
+  (function(){
+    const pl = document.getElementById('analytics-planet');
+    const SZ = 72, MARGIN = 20, HEADER = 0;
+    let px = window.innerWidth - SZ - 100, py = 80;
+    let tx = px, ty = py, vx = 0, vy = 0, nextT = 0;
+    function pick(){
+      tx = MARGIN + Math.random()*(window.innerWidth - SZ - MARGIN*2);
+      ty = HEADER + MARGIN + Math.random()*(window.innerHeight - SZ - MARGIN*2 - HEADER);
+      nextT = Date.now() + 3500 + Math.random()*4000;
+    }
+    pick();
+    function lerp(a,b,t){return a+(b-a)*t;}
+    function tick(){
+      if(Date.now()>nextT) pick();
+      vx=lerp(vx,(tx-px)*0.003,0.04); vy=lerp(vy,(ty-py)*0.003,0.04);
+      const spd=Math.sqrt(vx*vx+vy*vy), ms=2.2;
+      if(spd>ms){vx=vx/spd*ms; vy=vy/spd*ms;}
+      px+=vx; py+=vy;
+      if(px<MARGIN){px=MARGIN;vx*=-0.7;tx=window.innerWidth-SZ-MARGIN;}
+      if(px>window.innerWidth-SZ-MARGIN){px=window.innerWidth-SZ-MARGIN;vx*=-0.7;tx=MARGIN;}
+      if(py<HEADER+MARGIN){py=HEADER+MARGIN;vy*=-0.7;ty=window.innerHeight-SZ-MARGIN;}
+      if(py>window.innerHeight-SZ-MARGIN){py=window.innerHeight-SZ-MARGIN;vy*=-0.7;ty=HEADER+MARGIN;}
+      pl.style.left=px+'px'; pl.style.top=py+'px';
+      requestAnimationFrame(tick);
+    }
+    pl.style.left=px+'px'; pl.style.top=py+'px';
+    tick();
+    pl.addEventListener('click', openSqlModal);
+  })();
+
+  /* ─── SQL modal logic ─── */
+  function openSqlModal(){
+    document.getElementById('sql-modal').classList.add('open');
+    document.getElementById('sqlSearch').value='';
+    document.querySelectorAll('.sql-card').forEach(c=>c.classList.remove('hidden'));
+    document.querySelectorAll('.sql-section').forEach(s=>s.style.display='');
+  }
+  function closeSqlModal(){
+    document.getElementById('sql-modal').classList.remove('open');
+  }
+  document.getElementById('sql-modal').addEventListener('click',function(e){
+    if(e.target===this) closeSqlModal();
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape') closeSqlModal();
+  });
+  document.getElementById('sqlSearch').addEventListener('input',function(){
+    const q=this.value.toLowerCase();
+    document.querySelectorAll('.sql-card').forEach(c=>{
+      c.classList.toggle('hidden', q.length>0 && !c.innerText.toLowerCase().includes(q));
+    });
+    document.querySelectorAll('.sql-section').forEach(s=>{
+      const vis=[...s.querySelectorAll('.sql-card')].some(c=>!c.classList.contains('hidden'));
+      s.style.display=vis?'':' none';
+    });
+  });
+  function cpQ(btn){
+    const txt=btn.closest('.sql-card').querySelector('pre').innerText;
+    navigator.clipboard.writeText(txt).then(()=>{
+      btn.textContent='✓ Copied'; btn.classList.add('ok');
+      setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('ok');},1600);
+    });
+  }
+  </script>
+</body>
+</html>

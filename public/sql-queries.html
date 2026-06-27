@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SQL Queries — Property Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --bg:#04050f;
+      --surface:#0d0f1e;
+      --card:#12152a;
+      --border:rgba(124,58,237,0.22);
+      --accent:#7c3aed;
+      --accent2:#06b6d4;
+      --glow:#a78bfa;
+      --green:#10b981;
+      --yellow:#f59e0b;
+      --red:#ef4444;
+      --blue:#3b82f6;
+      --pink:#ec4899;
+    }
+    html{scroll-behavior:smooth;}
+    body{
+      font-family:'Outfit',sans-serif;
+      background:var(--bg);
+      color:#e2e8f0;
+      min-height:100vh;
+    }
+
+    /* ── Header ── */
+    header{
+      position:sticky;top:0;z-index:100;
+      display:flex;align-items:center;justify-content:space-between;
+      padding:1rem 2.5rem;
+      background:rgba(4,5,15,0.85);
+      backdrop-filter:blur(16px);
+      border-bottom:1px solid var(--border);
+    }
+    .logo{
+      font-size:1.3rem;font-weight:700;
+      background:linear-gradient(135deg,var(--glow),var(--accent2));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    }
+    .back-btn{
+      display:inline-flex;align-items:center;gap:0.5rem;
+      padding:0.5rem 1.2rem;border-radius:999px;
+      background:rgba(124,58,237,0.15);
+      border:1px solid rgba(124,58,237,0.4);
+      color:var(--glow);
+      text-decoration:none;font-size:0.85rem;font-weight:600;
+      transition:all 0.25s;
+    }
+    .back-btn:hover{background:rgba(124,58,237,0.3);transform:translateY(-1px);}
+
+    /* ── Hero banner ── */
+    .hero-banner{
+      text-align:center;padding:3.5rem 2rem 2rem;
+      background:radial-gradient(ellipse 80% 50% at 50% 0%, rgba(124,58,237,0.18) 0%, transparent 70%);
+    }
+    .hero-banner h1{
+      font-size:clamp(1.8rem,4vw,3rem);font-weight:900;
+      background:linear-gradient(135deg,#f8fafc,var(--glow) 60%,var(--accent2));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+      margin-bottom:0.8rem;
+    }
+    .hero-banner p{color:#94a3b8;font-size:1rem;max-width:560px;margin:0 auto;}
+
+    /* ── Stats bar ── */
+    .stats-bar{
+      display:flex;justify-content:center;flex-wrap:wrap;gap:1.2rem;
+      padding:1.5rem 2rem 2.5rem;
+    }
+    .stat-chip{
+      display:flex;align-items:center;gap:0.5rem;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:999px;
+      padding:0.45rem 1.1rem;
+      font-size:0.82rem;font-weight:600;
+    }
+    .stat-dot{width:8px;height:8px;border-radius:50%;}
+
+    /* ── Search ── */
+    .search-wrap{
+      max-width:700px;margin:0 auto 2rem;padding:0 1.5rem;
+    }
+    .search-input{
+      width:100%;padding:0.8rem 1.2rem 0.8rem 3rem;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:12px;
+      color:#e2e8f0;font-family:'Outfit',sans-serif;font-size:0.95rem;
+      outline:none;transition:border-color 0.3s;
+    }
+    .search-input:focus{border-color:var(--glow);}
+    .search-wrap{position:relative;}
+    .search-icon{
+      position:absolute;left:2.3rem;top:50%;transform:translateY(-50%);
+      color:#64748b;font-size:1rem;pointer-events:none;
+    }
+
+    /* ── Layout ── */
+    .container{max-width:1200px;margin:0 auto;padding:0 1.5rem 4rem;}
+
+    /* ── Section ── */
+    .section{margin-bottom:3rem;}
+    .section-title{
+      display:flex;align-items:center;gap:0.8rem;
+      margin-bottom:1.2rem;
+    }
+    .section-title h2{font-size:1.1rem;font-weight:700;color:#f1f5f9;}
+    .section-badge{
+      padding:0.2rem 0.7rem;border-radius:999px;
+      font-size:0.72rem;font-weight:700;letter-spacing:0.08em;
+      text-transform:uppercase;
+    }
+    .badge-select{background:rgba(16,185,129,0.15);color:var(--green);border:1px solid rgba(16,185,129,0.3);}
+    .badge-insert{background:rgba(59,130,246,0.15);color:var(--blue);border:1px solid rgba(59,130,246,0.3);}
+    .badge-update{background:rgba(245,158,11,0.15);color:var(--yellow);border:1px solid rgba(245,158,11,0.3);}
+    .badge-delete{background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3);}
+    .badge-ddl   {background:rgba(236,72,153,0.15);color:var(--pink);border:1px solid rgba(236,72,153,0.3);}
+    .badge-mixed {background:rgba(124,58,237,0.15);color:var(--glow);border:1px solid rgba(124,58,237,0.3);}
+
+    /* ── Query cards grid ── */
+    .cards-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(520px,1fr));
+      gap:1rem;
+    }
+
+    /* ── Query card ── */
+    .query-card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      overflow:hidden;
+      transition:border-color 0.25s,transform 0.25s,box-shadow 0.25s;
+    }
+    .query-card:hover{
+      border-color:rgba(167,139,250,0.5);
+      transform:translateY(-2px);
+      box-shadow:0 8px 32px rgba(124,58,237,0.18);
+    }
+    .card-header{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0.75rem 1rem;
+      background:rgba(255,255,255,0.025);
+      border-bottom:1px solid rgba(255,255,255,0.06);
+    }
+    .card-meta{display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;}
+    .card-title{font-size:0.78rem;font-weight:600;color:#cbd5e1;}
+    .op-badge{
+      padding:0.18rem 0.55rem;border-radius:6px;
+      font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
+    }
+    .op-SELECT{background:rgba(16,185,129,0.2);color:var(--green);}
+    .op-INSERT{background:rgba(59,130,246,0.2);color:var(--blue);}
+    .op-UPDATE{background:rgba(245,158,11,0.2);color:var(--yellow);}
+    .op-DELETE{background:rgba(239,68,68,0.2);color:var(--red);}
+    .op-CREATE{background:rgba(236,72,153,0.2);color:var(--pink);}
+
+    .copy-btn{
+      background:none;border:none;
+      color:#64748b;cursor:pointer;font-size:0.8rem;padding:0.3rem 0.6rem;
+      border-radius:6px;transition:background 0.2s,color 0.2s;
+      font-family:'Outfit',sans-serif;
+    }
+    .copy-btn:hover{background:rgba(255,255,255,0.08);color:#e2e8f0;}
+    .copy-btn.copied{color:var(--green);}
+
+    pre{
+      margin:0;padding:1rem 1.1rem;overflow-x:auto;
+      font-family:'JetBrains Mono',monospace;
+      font-size:0.78rem;line-height:1.7;
+      color:#c4b5fd;
+    }
+    /* SQL syntax highlight */
+    .kw{color:#67e8f9;}     /* keywords */
+    .tbl{color:#86efac;}    /* table names */
+    .fn{color:#fde68a;}     /* functions */
+    .str{color:#fca5a5;}    /* strings */
+    .cm{color:#4b5563;font-style:italic;} /* comments */
+    .num{color:#fb923c;}    /* numbers */
+
+    /* ── Route tag ── */
+    .route-tag{
+      font-size:0.68rem;color:#475569;
+      font-family:'JetBrains Mono',monospace;
+      padding:0.1rem 0.4rem;
+      background:rgba(255,255,255,0.04);
+      border-radius:4px;
+    }
+
+    /* ── Hidden for search ── */
+    .query-card.hidden{display:none;}
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar{width:6px;height:6px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:rgba(124,58,237,0.4);border-radius:999px;}
+
+    @media(max-width:680px){
+      .cards-grid{grid-template-columns:1fr;}
+      header{padding:1rem 1.2rem;}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⬡ PropManager</div>
+  <a href="/analytics.html" class="back-btn">← Back to Planet</a>
+</header>
+
+<div class="hero-banner">
+  <h1>📡 SQL Query Reference</h1>
+  <p>Every database query powering the Property Management System — grouped by module, filterable in real-time.</p>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-chip"><div class="stat-dot" style="background:var(--green)"></div> SELECT queries</div>
+  <div class="stat-chip"><div class="stat-dot" style="background:var(--blue)"></div> INSERT queries</div>
+  <div class="stat-chip"><div class="stat-dot" style="background:var(--yellow)"></div> UPDATE queries</div>
+  <div class="stat-chip"><div class="stat-dot" style="background:var(--red)"></div> DELETE queries</div>
+  <div class="stat-chip"><div class="stat-dot" style="background:var(--pink)"></div> DDL / Schema</div>
+</div>
+
+<div class="search-wrap">
+  <span class="search-icon">🔍</span>
+  <input class="search-input" id="searchInput" type="text" placeholder="Search queries, tables, keywords…"/>
+</div>
+
+<div class="container" id="queryContainer">
+
+  <!-- ═══════════════════════════════════════
+       1. SCHEMA / DDL
+  ═══════════════════════════════════════ -->
+  <div class="section" data-section="schema">
+    <div class="section-title">
+      <h2>🏗️ Schema &amp; DDL</h2>
+      <span class="section-badge badge-ddl">schema.sql + sale-migration.sql</span>
+    </div>
+    <div class="cards-grid">
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-CREATE">CREATE</span>
+            <span class="card-title">Create Database</span>
+            <span class="route-tag">schema.sql</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">CREATE DATABASE IF NOT EXISTS</span> property_mgmt
+  <span class="kw">CHARACTER SET</span> utf8mb4
+  <span class="kw">COLLATE</span> utf8mb4_unicode_ci;</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-CREATE">CREATE</span>
+            <span class="card-title">AGENT table</span>
+            <span class="route-tag">schema.sql</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">CREATE TABLE IF NOT EXISTS</span> <span class="tbl">AGENT</span> (
+  Agent_ID        <span class="kw">INT AUTO_INCREMENT PRIMARY KEY</span>,
+  Name            <span class="kw">VARCHAR</span>(<span class="num">100</span>) <span class="kw">NOT NULL</span>,
+  Phone           <span class="kw">VARCHAR</span>(<span class="num">20</span>)  <span class="kw">NOT NULL</span>,
+  Commission_Rate <span class="kw">DECIMAL</span>(<span class="num">5</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>,
+  <span class="kw">CONSTRAINT</span> chk_commission
+    <span class="kw">CHECK</span> (Commission_Rate <span class="kw">BETWEEN</span> <span class="num">0</span> <span class="kw">AND</span> <span class="num">25</span>)
+);</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-CREATE">CREATE</span>
+            <span class="card-title">PROPERTY table</span>
+            <span class="route-tag">schema.sql</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">CREATE TABLE IF NOT EXISTS</span> <span class="tbl">PROPERTY</span> (
+  Property_ID  <span class="kw">INT AUTO_INCREMENT PRIMARY KEY</span>,
+  Title        <span class="kw">VARCHAR</span>(<span class="num">200</span>) <span class="kw">NOT NULL</span>,
+  Type         <span class="kw">VARCHAR</span>(<span class="num">50</span>)  <span class="kw">NOT NULL</span>,
+  Location     <span class="kw">VARCHAR</span>(<span class="num">255</span>) <span class="kw">NOT NULL</span>,
+  Price        <span class="kw">DECIMAL</span>(<span class="num">14</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>,
+  Status       <span class="kw">VARCHAR</span>(<span class="num">20</span>)  <span class="kw">DEFAULT</span> <span class="str">'Available'</span>,
+  AI_Est_Price <span class="kw">DECIMAL</span>(<span class="num">14</span>,<span class="num">2</span>) <span class="kw">NULL</span>,
+  Owner_ID     <span class="kw">INT NOT NULL</span>,
+  Agent_ID     <span class="kw">INT NOT NULL</span>,
+  <span class="kw">CONSTRAINT</span> chk_price   <span class="kw">CHECK</span> (Price &gt; <span class="num">0</span>),
+  <span class="kw">CONSTRAINT</span> chk_status  <span class="kw">CHECK</span> (Status <span class="kw">IN</span>
+    (<span class="str">'Available'</span>,<span class="str">'Sold'</span>,<span class="str">'Rented'</span>,<span class="str">'Pending'</span>))
+);</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-CREATE">CREATE</span>
+            <span class="card-title">SALE table (migration)</span>
+            <span class="route-tag">sale-migration.sql</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">CREATE TABLE IF NOT EXISTS</span> <span class="tbl">SALE</span> (
+  Sale_ID        <span class="kw">INT AUTO_INCREMENT PRIMARY KEY</span>,
+  Property_ID    <span class="kw">INT NOT NULL</span>,
+  Buyer_Tenant_ID <span class="kw">INT NOT NULL</span>,
+  Amount         <span class="kw">DECIMAL</span>(<span class="num">15</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>,
+  Method         <span class="kw">VARCHAR</span>(<span class="num">30</span>) <span class="kw">DEFAULT NULL</span>,
+  Sale_Status    <span class="kw">ENUM</span>(<span class="str">'Pending_Payment'</span>,<span class="str">'Completed'</span>,
+                      <span class="str">'Cancelled'</span>) <span class="kw">DEFAULT</span> <span class="str">'Pending_Payment'</span>,
+  Created_At     <span class="kw">TIMESTAMP DEFAULT CURRENT_TIMESTAMP</span>
+);</pre>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       2. DASHBOARD
+  ═══════════════════════════════════════ -->
+  <div class="section" data-section="dashboard">
+    <div class="section-title">
+      <h2>📊 Dashboard</h2>
+      <span class="section-badge badge-select">routes/dashboard.js</span>
+    </div>
+    <div class="cards-grid">
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">Count Totals (Properties, Agents, Tenants, Owners)</span>
+            <span class="route-tag">GET /api/dashboard</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> total_properties <span class="kw">FROM</span> <span class="tbl">PROPERTY</span>;
+<span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> total_agents    <span class="kw">FROM</span> <span class="tbl">AGENT</span>;
+<span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> total_tenants   <span class="kw">FROM</span> <span class="tbl">TENANT</span>;
+<span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> total_owners    <span class="kw">FROM</span> <span class="tbl">OWNER</span>;</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">Active Leases &amp; Open Inquiries</span>
+            <span class="route-tag">GET /api/dashboard</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> active_leases
+<span class="kw">FROM</span> <span class="tbl">LEASE</span> <span class="kw">WHERE</span> End_Date &gt;= <span class="fn">CURDATE()</span>;
+
+<span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> open_inquiries
+<span class="kw">FROM</span> <span class="tbl">INQUIRY</span>
+<span class="kw">WHERE</span> Status <span class="kw">IN</span> (<span class="str">'New'</span>, <span class="str">'Responded'</span>);</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">Total Revenue &amp; Available Properties</span>
+            <span class="route-tag">GET /api/dashboard</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT IFNULL</span>(<span class="fn">SUM</span>(Amount), <span class="num">0</span>) <span class="kw">AS</span> total_revenue
+<span class="kw">FROM</span> <span class="tbl">PAYMENT</span> <span class="kw">WHERE</span> Status = <span class="str">'Success'</span>;
+
+<span class="kw">SELECT COUNT</span>(*) <span class="kw">AS</span> available_props
+<span class="kw">FROM</span> <span class="tbl">PROPERTY</span> <span class="kw">WHERE</span> Status = <span class="str">'Available'</span>;</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">Property Status Breakdown</span>
+            <span class="route-tag">GET /api/dashboard</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT</span> Status, <span class="fn">COUNT</span>(*) <span class="kw">AS</span> count
+<span class="kw">FROM</span> <span class="tbl">PROPERTY</span>
+<span class="kw">GROUP BY</span> Status;</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">Recent Payments (last 5)</span>
+            <span class="route-tag">GET /api/dashboard</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT</span> pay.*, p.Title <span class="kw">AS</span> Property_Title
+<span class="kw">FROM</span> <span class="tbl">PAYMENT</span> pay
+<span class="kw">JOIN</span> <span class="tbl">LEASE</span> l    <span class="kw">ON</span> pay.Lease_ID = l.Lease_ID
+<span class="kw">JOIN</span> <span class="tbl">PROPERTY</span> p <span class="kw">ON</span> l.Property_ID = p.Property_ID
+<span class="kw">ORDER BY</span> pay.Payment_Date <span class="kw">DESC LIMIT</span> <span class="num">5</span>;</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">Top Agents by Property Count</span>
+            <span class="route-tag">GET /api/dashboard</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT</span> a.Name, <span class="fn">COUNT</span>(p.Property_ID) <span class="kw">AS</span> property_count
+<span class="kw">FROM</span> <span class="tbl">AGENT</span> a
+<span class="kw">LEFT JOIN</span> <span class="tbl">PROPERTY</span> p <span class="kw">ON</span> a.Agent_ID = p.Agent_ID
+<span class="kw">GROUP BY</span> a.Agent_ID
+<span class="kw">ORDER BY</span> property_count <span class="kw">DESC LIMIT</span> <span class="num">5</span>;</pre>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       3. PROPERTIES
+  ═══════════════════════════════════════ -->
+  <div class="section" data-section="properties">
+    <div class="section-title">
+      <h2>🏠 Properties</h2>
+      <span class="section-badge badge-mixed">routes/properties.js</span>
+    </div>
+    <div class="cards-grid">
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">All Properties with Owner &amp; Agent</span>
+            <span class="route-tag">GET /api/properties</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT</span> p.*, o.Name <span class="kw">AS</span> Owner_Name, a.Name <span class="kw">AS</span> Agent_Name
+<span class="kw">FROM</span> <span class="tbl">PROPERTY</span> p
+<span class="kw">JOIN</span> <span class="tbl">OWNER</span> o <span class="kw">ON</span> p.Owner_ID = o.Owner_ID
+<span class="kw">JOIN</span> <span class="tbl">AGENT</span> a <span class="kw">ON</span> p.Agent_ID = a.Agent_ID
+<span class="kw">ORDER BY</span> p.Property_ID;</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">Property by ID with Amenities</span>
+            <span class="route-tag">GET /api/properties/:id</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT</span> p.*, o.Name <span class="kw">AS</span> Owner_Name, a.Name <span class="kw">AS</span> Agent_Name
+<span class="kw">FROM</span> <span class="tbl">PROPERTY</span> p
+<span class="kw">JOIN</span> <span class="tbl">OWNER</span> o <span class="kw">ON</span> p.Owner_ID = o.Owner_ID
+<span class="kw">JOIN</span> <span class="tbl">AGENT</span> a <span class="kw">ON</span> p.Agent_ID = a.Agent_ID
+<span class="kw">WHERE</span> p.Property_ID = ?;
+
+<span class="kw">SELECT</span> am.Amenity_Name <span class="kw">FROM</span> <span class="tbl">AMENITY</span> am
+<span class="kw">JOIN</span> <span class="tbl">PROPERTY_AMENITY</span> pa
+  <span class="kw">ON</span> am.Amenity_ID = pa.Amenity_ID
+<span class="kw">WHERE</span> pa.Property_ID = ?;</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-INSERT">INSERT</span>
+            <span class="card-title">Add New Property (with AI Price)</span>
+            <span class="route-tag">POST /api/properties</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">INSERT INTO</span> <span class="tbl">PROPERTY</span>
+  (Title, Type, Location, Price, Status,
+   AI_Est_Price, Owner_ID, Agent_ID)
+<span class="kw">VALUES</span> (?, ?, ?, ?, ?, ?, ?, ?);
+<span class="cm">-- AI_Est_Price = Price × (0.9 + random × 0.2)</span></pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">Check if Property is Sold (Immutability Guard)</span>
+            <span class="route-tag">PUT /api/properties/:id</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT</span> Status <span class="kw">FROM</span> <span class="tbl">PROPERTY</span>
+<span class="kw">WHERE</span> Property_ID = ?;
+<span class="cm">-- Returns 403 if Status = 'Sold'</span></pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-UPDATE">UPDATE</span>
+            <span class="card-title">Update Property Details</span>
+            <span class="route-tag">PUT /api/properties/:id</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">UPDATE</span> <span class="tbl">PROPERTY</span>
+<span class="kw">SET</span> Title=?, Type=?, Location=?,
+    Price=?, Status=?,
+    Owner_ID=?, Agent_ID=?
+<span class="kw">WHERE</span> Property_ID = ?;</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-DELETE">DELETE</span>
+            <span class="card-title">Delete Property</span>
+            <span class="route-tag">DELETE /api/properties/:id</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">DELETE FROM</span> <span class="tbl">PROPERTY</span>
+<span class="kw">WHERE</span> Property_ID = ?;</pre>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       4. PAYMENTS
+  ═══════════════════════════════════════ -->
+  <div class="section" data-section="payments">
+    <div class="section-title">
+      <h2>💳 Payments</h2>
+      <span class="section-badge badge-mixed">routes/payments.js</span>
+    </div>
+    <div class="cards-grid">
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">All Payments with Lease &amp; Property</span>
+            <span class="route-tag">GET /api/payments</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT</span> pay.*, l.Monthly_Rent,
+       p.Title <span class="kw">AS</span> Property_Title
+<span class="kw">FROM</span> <span class="tbl">PAYMENT</span> pay
+<span class="kw">JOIN</span> <span class="tbl">LEASE</span> l    <span class="kw">ON</span> pay.Lease_ID = l.Lease_ID
+<span class="kw">JOIN</span> <span class="tbl">PROPERTY</span> p <span class="kw">ON</span> l.Property_ID = p.Property_ID
+<span class="kw">ORDER BY</span> pay.Payment_Date <span class="kw">DESC</span>;</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">Payment by ID</span>
+            <span class="route-tag">GET /api/payments/:id</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">PAYMENT</span>
+<span class="kw">WHERE</span> Payment_ID = ?;</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-INSERT">INSERT</span>
+            <span class="card-title">Record New Payment</span>
+            <span class="route-tag">POST /api/payments</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">INSERT INTO</span> <span class="tbl">PAYMENT</span>
+  (Payment_Date, Amount, Method, Status, Lease_ID)
+<span class="kw">VALUES</span> (?, ?, ?, ?, ?);</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-UPDATE">UPDATE</span>
+            <span class="card-title">Update Payment Status</span>
+            <span class="route-tag">PUT /api/payments/:id</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">UPDATE</span> <span class="tbl">PAYMENT</span>
+<span class="kw">SET</span> Status = ?
+<span class="kw">WHERE</span> Payment_ID = ?;</pre>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       5. LEASES
+  ═══════════════════════════════════════ -->
+  <div class="section" data-section="leases">
+    <div class="section-title">
+      <h2>📄 Leases</h2>
+      <span class="section-badge badge-mixed">routes/leases.js</span>
+    </div>
+    <div class="cards-grid">
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">All Leases with Tenants (GROUP_CONCAT)</span>
+            <span class="route-tag">GET /api/leases</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT</span> l.*, p.Title <span class="kw">AS</span> Property_Title,
+  <span class="fn">GROUP_CONCAT</span>(t.Name <span class="kw">SEPARATOR</span> <span class="str">', '</span>) <span class="kw">AS</span> Tenants
+<span class="kw">FROM</span> <span class="tbl">LEASE</span> l
+<span class="kw">JOIN</span>      <span class="tbl">PROPERTY</span> p  <span class="kw">ON</span> l.Property_ID = p.Property_ID
+<span class="kw">LEFT JOIN</span> <span class="tbl">TENANT_LEASE</span> tl <span class="kw">ON</span> l.Lease_ID = tl.Lease_ID
+<span class="kw">LEFT JOIN</span> <span class="tbl">TENANT</span> t    <span class="kw">ON</span> tl.Tenant_ID = t.Tenant_ID
+<span class="kw">GROUP BY</span> l.Lease_ID
+<span class="kw">ORDER BY</span> l.Start_Date <span class="kw">DESC</span>;</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-INSERT">INSERT</span>
+            <span class="card-title">Create Lease (Transaction)</span>
+            <span class="route-tag">POST /api/leases</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="cm">-- Transaction with rollback on error</span>
+<span class="kw">INSERT INTO</span> <span class="tbl">LEASE</span>
+  (Start_Date, End_Date, Monthly_Rent,
+   Security_Deposit, Property_ID)
+<span class="kw">VALUES</span> (?, ?, ?, ?, ?);
+
+<span class="kw">INSERT INTO</span> <span class="tbl">TENANT_LEASE</span>
+  (Tenant_ID, Lease_ID)
+<span class="kw">VALUES</span> (?, ?);</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-UPDATE">UPDATE</span>
+            <span class="card-title">Update Lease</span>
+            <span class="route-tag">PUT /api/leases/:id</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">UPDATE</span> <span class="tbl">LEASE</span>
+<span class="kw">SET</span> Start_Date=?, End_Date=?,
+    Monthly_Rent=?, Security_Deposit=?,
+    Property_ID=?
+<span class="kw">WHERE</span> Lease_ID = ?;</pre>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       6. INQUIRIES
+  ═══════════════════════════════════════ -->
+  <div class="section" data-section="inquiries">
+    <div class="section-title">
+      <h2>💬 Inquiries</h2>
+      <span class="section-badge badge-mixed">routes/inquiries.js</span>
+    </div>
+    <div class="cards-grid">
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">All Inquiries (Tenant + Property + Agent)</span>
+            <span class="route-tag">GET /api/inquiries</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT</span> i.*,
+  t.Name <span class="kw">AS</span> Tenant_Name,
+  p.Title <span class="kw">AS</span> Property_Title,
+  a.Name <span class="kw">AS</span> Agent_Name
+<span class="kw">FROM</span> <span class="tbl">INQUIRY</span> i
+<span class="kw">JOIN</span> <span class="tbl">TENANT</span>   t <span class="kw">ON</span> i.Tenant_ID   = t.Tenant_ID
+<span class="kw">JOIN</span> <span class="tbl">PROPERTY</span>  p <span class="kw">ON</span> i.Property_ID = p.Property_ID
+<span class="kw">JOIN</span> <span class="tbl">AGENT</span>     a <span class="kw">ON</span> i.Agent_ID    = a.Agent_ID
+<span class="kw">ORDER BY</span> i.Date <span class="kw">DESC</span>;</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-INSERT">INSERT</span>
+            <span class="card-title">Create Inquiry</span>
+            <span class="route-tag">POST /api/inquiries</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">INSERT INTO</span> <span class="tbl">INQUIRY</span>
+  (Message, Date, Status,
+   Tenant_ID, Property_ID, Agent_ID)
+<span class="kw">VALUES</span> (?, ?, ?, ?, ?, ?);</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-UPDATE">UPDATE</span>
+            <span class="card-title">Update Inquiry Status</span>
+            <span class="route-tag">PUT /api/inquiries/:id</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">UPDATE</span> <span class="tbl">INQUIRY</span>
+<span class="kw">SET</span> Status = ?
+<span class="kw">WHERE</span> Inquiry_ID = ?;</pre>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       7. AMENITIES
+  ═══════════════════════════════════════ -->
+  <div class="section" data-section="amenities">
+    <div class="section-title">
+      <h2>🏊 Amenities</h2>
+      <span class="section-badge badge-mixed">routes/amenities.js</span>
+    </div>
+    <div class="cards-grid">
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-SELECT">SELECT</span>
+            <span class="card-title">All Amenities</span>
+            <span class="route-tag">GET /api/amenities</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">AMENITY</span>
+<span class="kw">ORDER BY</span> Amenity_ID;</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-INSERT">INSERT</span>
+            <span class="card-title">Add Amenity</span>
+            <span class="route-tag">POST /api/amenities</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">INSERT INTO</span> <span class="tbl">AMENITY</span> (Amenity_Name)
+<span class="kw">VALUES</span> (?);</pre>
+      </div>
+
+      <div class="query-card">
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="op-badge op-DELETE">DELETE</span>
+            <span class="card-title">Delete Amenity</span>
+            <span class="route-tag">DELETE /api/amenities/:id</span>
+          </div>
+          <button class="copy-btn" onclick="copyQuery(this)">Copy</button>
+        </div>
+        <pre><span class="kw">DELETE FROM</span> <span class="tbl">AMENITY</span>
+<span class="kw">WHERE</span> Amenity_ID = ?;</pre>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+/* ── Live search ── */
+const input = document.getElementById('searchInput');
+input.addEventListener('input', () => {
+  const q = input.value.toLowerCase();
+  document.querySelectorAll('.query-card').forEach(card => {
+    const text = card.innerText.toLowerCase();
+    card.classList.toggle('hidden', q.length > 0 && !text.includes(q));
+  });
+  // Hide empty section headings
+  document.querySelectorAll('.section').forEach(sec => {
+    const visible = [...sec.querySelectorAll('.query-card')]
+      .some(c => !c.classList.contains('hidden'));
+    sec.style.display = visible ? '' : 'none';
+  });
+});
+
+/* ── Copy query ── */
+function copyQuery(btn) {
+  const pre = btn.closest('.query-card').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copied';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.classList.remove('copied');
+    }, 1800);
+  });
+}
+</script>
+</body>
+</html>
