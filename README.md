@@ -1,4 +1,4 @@
-# PropVault — Property Management System
+# Property Dheko — Property Management System
 
 A full-stack property management platform with role-based portals for tenants, owners, and agents, built with Node.js, Express, and MySQL.
 
